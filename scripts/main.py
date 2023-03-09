@@ -879,6 +879,7 @@ def on_ui_tabs():
                             label="Save separate diffusers snapshots when training is canceled."
                         )
                 with gr.Tab("Generate", elem_id="TabGenerate"):
+                    gr.HTML(value="Class Generation Schedulers")
                     db_class_gen_method = gr.Dropdown(
                         label="Class Image Generation Method",
                         value="Native Diffusers",
@@ -892,6 +893,7 @@ def on_ui_tabs():
                         value="DEISMultistep",
                         choices=get_scheduler_names(),
                     )
+                    gr.HTML(value="Manual Class Generation")
                     with gr.Column():
                         db_generate_classes = gr.Button(value="Generate Class Images")
                         db_generate_graph = gr.Button(value="Generate Graph")
@@ -979,8 +981,9 @@ def on_ui_tabs():
                             visible=False  # db_sample_txt2img not implemented yet
                         )
                 with gr.Tab("Testing", elem_id="TabDebug"):
+                    gr.HTML(value="Experimental Settings")
                     db_deterministic = gr.Checkbox(label="Deterministic")
-                    db_ema_predict = gr.Checkbox(label="Use EMA for prediction.")
+                    db_ema_predict = gr.Checkbox(label="Use EMA for prediction")
                     db_split_loss = gr.Checkbox(
                         label="Calculate Split Loss", value=True
                     )

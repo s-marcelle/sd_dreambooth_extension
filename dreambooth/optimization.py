@@ -50,47 +50,47 @@ class SchedulerType(Enum):
     ADAM_WITH_DADAPTATION = "adam_with_dadaptation"
     ADAGRAD_WITH_DADAPTATION = "adagrad_with_dadaptation"
 
-    def get_sgd_with_dadaptation(
-        self,
-        optimizer: Optimizer,
-        lr: float,
-        betas: Tuple[float, float] = (0.9, 0.999),
-        momentum: float = 0.9,
-        weight_decay: float = 0.0,
-        d0: float = 1e-6,
-        growth_rate: float = float("inf"),
-    ):
-        """
-        Implements SGD with D-Adaptation automatic step-sizes. Leave LR set to 1 unless you encounter instability.
-        Arguments:
-            params (iterable):
-                Iterable of parameters to optimize or dicts defining parameter groups.
-            lr (float):
-                Learning rate adjustment parameter. Increases or decreases the D-adapted learning rate.
-            betas (Tuple[float, float], optional): coefficients used for computing
-                running averages of gradient and its square (default: (0.9, 0.999))
-            momentum (float):
-                Momentum value in  the range [0,1) (default: 0.9).
-            weight_decay (float):
-                Weight decay, i.e. a L2 penalty (default: 0).
-            log_every (int):
-                Log using print every k steps, default 0 (no logging).
-            d0 (float):
-                Initial D estimate for D-adaptation (default 1e-6). Rarely needs changing.
-            growth_rate (float):
-                prevent the D estimate from growing faster than this multiplicative rate.
-                Default is inf, for unrestricted. More conservative values like 1.02 may
-                help if training is unstable."""
 
-        return DAdaptSGD(
-            optimizer=optimizer,
-            lr=lr,
-            betas=betas,
-            momentum=momentum,
-            weight_decay=weight_decay,
-            d0=d0,
-            growth_rate=growth_rate,
-        )
+def get_sgd_with_dadaptation(
+    optimizer: Optimizer,
+    lr: float,
+    betas: Tuple[float, float] = (0.9, 0.999),
+    momentum: float = 0.9,
+    weight_decay: float = 0.0,
+    d0: float = 1e-6,
+    growth_rate: float = float("inf"),
+):
+    """
+    Implements SGD with D-Adaptation automatic step-sizes. Leave LR set to 1 unless you encounter instability.
+    Arguments:
+        params (iterable):
+            Iterable of parameters to optimize or dicts defining parameter groups.
+        lr (float):
+            Learning rate adjustment parameter. Increases or decreases the D-adapted learning rate.
+        betas (Tuple[float, float], optional): coefficients used for computing
+            running averages of gradient and its square (default: (0.9, 0.999))
+        momentum (float):
+            Momentum value in  the range [0,1) (default: 0.9).
+        weight_decay (float):
+            Weight decay, i.e. a L2 penalty (default: 0).
+        log_every (int):
+            Log using print every k steps, default 0 (no logging).
+        d0 (float):
+            Initial D estimate for D-adaptation (default 1e-6). Rarely needs changing.
+        growth_rate (float):
+            prevent the D estimate from growing faster than this multiplicative rate.
+            Default is inf, for unrestricted. More conservative values like 1.02 may
+            help if training is unstable."""
+
+    return DAdaptSGD(
+        optimizer=optimizer,
+        lr=lr,
+        betas=betas,
+        momentum=momentum,
+        weight_decay=weight_decay,
+        d0=d0,
+        growth_rate=growth_rate,
+    )
 
 
 def get_adam_with_dadaptation(
@@ -250,7 +250,7 @@ def get_linear_schedule(
 
 
 def get_constant_schedule(
-    optimizer: Optimizer, factor: float = 1.0, total_iters: int = 500
+    optimizer: Optimizer,factor: float = 1.0, total_iters: int = 500
 ):
     """
     Create a schedule with a constant learning rate, using the learning rate set in optimizer.
@@ -373,55 +373,6 @@ def get_cosine_schedule_with_warmup(
         )
 
     return LambdaLR(optimizer, lr_lambda, last_epoch)
-
-
-def get_sgd_with_daptation(
-    lr: float = 1.0,
-    momentum: float = 0.0,
-    weight_decay: float = 0.0,
-    weight_decouple: bool = True,
-    d0: float = 1e-6,
-):
-    """Create the SGD optimizer with adaptation."""
-    return DAdaptSGD(
-        lr=lr,
-        weight_decay=weight_decay,
-        momentum=momentum,
-        weight_decouple=weight_decouple,
-        d0=d0,
-    )
-
-
-def get_adam_with_daptation(
-    lr: float = 1.0,
-    weight_decay: float = 0.0,
-    weight_decouple: bool = True,
-    d0: float = 1e-6,
-):
-    """Create the Adam optimizer with adaptation."""
-    return DAdaptAdam(
-        lr=lr,
-        weight_decay=weight_decay,
-        weight_decouple=weight_decouple,
-        d0=d0,
-    )
-
-
-def get_adagrad_with_daptation(
-    lr: float = 1.0,
-    momentum: float = 0.0,
-    weight_decay: float = 0.0,
-    weight_decouple: bool = True,
-    d0: float = 1e-6,
-):
-    """Create the Adagrad optimizer with adaptation."""
-    return DAdaptAdaGrad(
-        lr=lr,
-        weight_decay=weight_decay,
-        momentum=momentum,
-        weight_decouple=weight_decouple,
-        d0=d0,
-    )
 
 
 def get_cosine_with_hard_restarts_schedule_with_warmup(
@@ -572,7 +523,12 @@ def get_scheduler(
     name = SchedulerType(name)
     break_steps = int(total_training_steps * scale_pos)
 
-    # New schedulers
+    # Adaptation schedulers
+
+    get_sgd_with_dadaptation
+    get_adam_with_dadaptation
+
+    # Newer schedulers
     if name == SchedulerType.CONSTANT:
         return get_constant_schedule(optimizer, factor, break_steps)
 
