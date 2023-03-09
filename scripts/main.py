@@ -444,14 +444,22 @@ def on_ui_tabs():
                         ]
                         with gr.Column():
                             gr.HTML(value="Learning Rate")
+                            with gr.Row(visible=False) as lora_lr_row:
+                                db_lora_learning_rate = gr.Number(
+                                    label="Lora UNET Learning Rate", value=2e-4
+                                )
+                                db_lora_txt_learning_rate = gr.Number(
+                                    label="Lora Text Encoder Learning Rate", value=2e-4
+                                )
+                            with gr.Row() as standard_lr_row:
+                                db_learning_rate = gr.Number(
+                                    label="Learning Rate", value=2e-6
+                                )
+
                             db_lr_scheduler = gr.Dropdown(
                                 label="Learning Rate Scheduler",
                                 value="constant_with_warmup",
                                 choices=schedulers,
-                            )
-
-                            db_learning_rate = gr.Number(
-                                label="Learning Rate", value=2e-6
                             )
                             db_learning_rate_min = gr.Number(
                                 label="Min Learning Rate", value=1e-6, visible=False
@@ -482,47 +490,39 @@ def on_ui_tabs():
                                 step=0.05,
                                 visible=False,
                             )
-
-                            # Dadaptation params only visible if with Dadaptation optimizer selected
-                            # Hide all other scheduler params and scheduler dropdown
-                            db_adaptation_growth_rate = gr.Number(
-                                label="Adaptation Growth Rate",
-                                value=1e-8,
-                            )
-                            db_adaptation_d0 = gr.Number(
-                                label="Adaptation D0",
-                                value=1e-8,
-                            )
-                            db_adaptation_eps = gr.Number(
-                                label="Adaptation Eps",
-                                value=1e-8,
-                            )
-                            db_adaptation_momentum = gr.Number(
-                                label="Adaptation Momentum",
-                                value=0,
-                            )
-                            db_adaptation_beta1 = gr.Number(
-                                label="Adaptation Beta1",
-                                value=0
-                            )
-                            db_adaptation_beta2 = gr.Number(
-                                label="Adaptation Beta2",
-                                value=0,
-                            )
-
-                            with gr.Row(visible=False) as lora_lr_row:
-                                db_lora_learning_rate = gr.Number(
-                                    label="Lora UNET Learning Rate", value=2e-4
-                                )
-                                db_lora_txt_learning_rate = gr.Number(
-                                    label="Lora Text Encoder Learning Rate", value=2e-4
-                                )
                             db_lr_warmup_steps = gr.Slider(
                                 label="Learning Rate Warmup Steps",
                                 value=0,
                                 step=5,
                                 maximum=10000,
                             )
+
+                            with gr.Column(visible=False) as adaptation_lr_row:
+                                # Hide all other scheduler params and scheduler dropdown
+                                db_adaptation_growth_rate = gr.Number(
+                                    label="Adaptation Growth Rate",
+                                    value=1e-8,
+                                )
+                                db_adaptation_d0 = gr.Number(
+                                    label="Adaptation D0",
+                                    value=1e-8,
+                                )
+                                db_adaptation_eps = gr.Number(
+                                    label="Adaptation Eps",
+                                    value=1e-8,
+                                )
+                                db_adaptation_momentum = gr.Number(
+                                    label="Adaptation Momentum",
+                                    value=0,
+                                )
+                                db_adaptation_beta1 = gr.Number(
+                                    label="Adaptation Beta1",
+                                    value=0
+                                )
+                                db_adaptation_beta2 = gr.Number(
+                                    label="Adaptation Beta2",
+                                    value=0,
+                                )
 
                         with gr.Column():
                             gr.HTML(value="Image Processing")
@@ -1029,12 +1029,16 @@ def on_ui_tabs():
                 )
 
                 def check_toggles(
-                    use_ema, use_lora, lr_scheduler, train_unet, scale_prior
+                    use_lora, lr_scheduler, train_unet, scale_prior
                 ):
                     stop_text_encoder = update_stop_tenc(train_unet)
-                    show_ema, lora_save, lora_lr, lora_model = disable_ema(use_lora)
-                    if not use_lora and use_ema:
-                        disable_lora(use_ema)
+                    (
+                        show_ema,
+                        lora_save,
+                        lora_lr,
+                        standard_lr,
+                        lora_model,
+                     ) = disable_lora(use_lora)
                     (
                         lr_power,
                         lr_cycles,
@@ -1042,7 +1046,7 @@ def on_ui_tabs():
                         lr_factor,
                         learning_rate_min,
                         lr_warmup_steps,
-                    ) = toggle_lr_min(lr_scheduler)
+                     ) = lr_scheduler_changed(lr_scheduler)
                     loss_min, loss_tgt = toggle_loss_items(scale_prior)
                     return (
                         stop_text_encoder,
@@ -1058,6 +1062,7 @@ def on_ui_tabs():
                         lr_warmup_steps,
                         loss_min,
                         loss_tgt,
+                        standard_lr
                     )
 
                 db_start_crop.click(
@@ -1076,7 +1081,6 @@ def on_ui_tabs():
                 db_update_params.click(
                     fn=check_toggles,
                     inputs=[
-                        db_use_ema,
                         db_use_lora,
                         db_lr_scheduler,
                         db_train_unet,
@@ -1096,6 +1100,7 @@ def on_ui_tabs():
                         db_lr_warmup_steps,
                         db_prior_loss_weight_min,
                         db_prior_loss_target,
+                        standard_lr_row,
                     ],
                 )
 
@@ -1405,18 +1410,21 @@ def on_ui_tabs():
             outputs=[db_prior_loss_weight_min, db_prior_loss_target],
         )
 
-        def disable_ema(x):
+        def disable_lora(x):
+            use_ema = gr.update(interactive=not x)
+            lora_save = gr.update(visible=x)
+            lora_lr = gr.update(visible=x)
+            standard_lr = gr.update(visible=not x)
+            lora_model = gr.update(visible=x)
             return (
-                gr.update(interactive=not x),
-                gr.update(visible=x),
-                gr.update(visible=x),
-                gr.update(visible=x),
+                use_ema,
+                lora_save,
+                lora_lr,
+                standard_lr,
+                lora_model,
             )
 
-        def disable_lora(x):
-            db_use_lora.interactive = not x
-
-        def toggle_lr_min(sched):
+        def lr_scheduler_changed(sched):
             show_scale_pos = gr.update(visible=False)
             show_min_lr = gr.update(visible=False)
             show_lr_factor = gr.update(visible=False)
@@ -1433,9 +1441,9 @@ def on_ui_tabs():
                 show_scale_pos = gr.update(visible=True)
             else:
                 show_lr_warmup = gr.update(visible=True)
-            if sched == "cosine_annealing" or sched == "cosine_annealing_with_restarts":
+            if sched in ["cosine_annealing", "cosine_annealing_with_restarts"]:
                 show_min_lr = gr.update(visible=True)
-            if sched == "linear" or sched == "constant":
+            if sched in ["linear", "constant"]:
                 show_lr_factor = gr.update(visible=True)
             return (
                 show_lr_power,
@@ -1446,14 +1454,25 @@ def on_ui_tabs():
                 show_lr_warmup,
             )
 
+        def optimizer_changed(opti):
+            show_adapt = opti in ["SGD Dadaptation", "AdaGrad Dadaptation", "AdamW Dadaptation"]
+            adaptation_lr = gr.update(visible=show_adapt)
+            return adaptation_lr
+
         db_use_lora.change(
-            fn=disable_ema,
+            fn=disable_lora,
             inputs=[db_use_lora],
-            outputs=[db_use_ema, lora_save_col, lora_lr_row, lora_model_row],
+            outputs=[
+                db_use_ema,
+                lora_save_col,
+                lora_lr_row,
+                standard_lr_row,
+                lora_model_row,
+            ],
         )
 
         db_lr_scheduler.change(
-            fn=toggle_lr_min,
+            fn=lr_scheduler_changed,
             inputs=[db_lr_scheduler],
             outputs=[
                 db_lr_power,
@@ -1465,10 +1484,10 @@ def on_ui_tabs():
             ],
         )
 
-        db_use_ema.change(
-            fn=disable_lora,
-            inputs=[db_use_ema],
-            outputs=[db_use_lora],
+        db_optimizer.change(
+            fn=optimizer_changed,
+            inputs=[db_optimizer],
+            outputs=[adaptation_lr_row],
         )
 
         db_model_name.change(

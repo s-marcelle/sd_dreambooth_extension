@@ -447,7 +447,6 @@ def main(use_txt2img: bool = True) -> TrainResult:
 
         if args.use_lora:
             args.learning_rate = args.lora_learning_rate
-
             params_to_optimize = (
                 [
                     {
@@ -727,18 +726,14 @@ def main(use_txt2img: bool = True) -> TrainResult:
         print(f"  Num Epochs = {max_train_epochs}")
         print(f"  Batch Size Per Device = {train_batch_size}")
         print(f"  Gradient Accumulation steps = {gradient_accumulation_steps}")
-        print(
-            f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}"
-        )
+        print(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
         print(f"  Text Encoder Epochs: {text_encoder_epochs}")
         print(f"  Total optimization steps = {sched_train_steps}")
         print(f"  Total training steps = {max_train_steps}")
         print(f"  Resuming from checkpoint: {resume_from_checkpoint}")
         print(f"  First resume epoch: {first_epoch}")
         print(f"  First resume step: {resume_step}")
-        print(
-            f"  Lora: {args.use_lora}, Optimizer: {args.optimizer}, Prec: {precision}"
-        )
+        print(f"  Lora: {args.use_lora}, Optimizer: {args.optimizer}, Prec: {precision}")
         print(f"  Gradient Checkpointing: {args.gradient_checkpointing}")
         print(f"  EMA: {args.use_ema}")
         print(f"  UNET: {args.train_unet}")
