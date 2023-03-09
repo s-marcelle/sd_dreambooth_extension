@@ -141,14 +141,53 @@ def list_attention():
         return ["default"]
 
 
-def list_floats():
-    floats = ["no", "fp16"]
+def list_precisions():
+    precisions = ["no", "fp16"]
     try:
         if torch.cuda.is_bf16_supported():
-            floats.append("bf16")
+            precisions.append("bf16")
     except:
         pass
-    return floats
+    
+    return precisions
+
+
+def list_og_schedulers():
+    return [
+        "linear",
+        "linear_with_warmup",
+        "cosine",
+        "cosine_annealing",
+        "cosine_annealing_with_restarts",
+        "cosine_with_restarts",
+        "polynomial",
+        "constant",
+        "constant_with_warmup",
+    ]
+
+
+def list_adapt_schedulers():
+    schedulers = list_og_schedulers()
+
+    try:
+        from dadaptation import DAdaptSGD
+        schedulers.append("sgd_with_dadaptation")
+    except ImportError:
+        pass
+
+    try:
+        from dadaptation import DAdaptAdaGrad
+        schedulers.append("adam_with_dadaptation")
+    except ImportError:
+        pass
+
+    try:
+        from dadaptation import DAdaptAdam
+        schedulers.append("adagrad_with_dadaptation")
+    except ImportError:
+        pass
+    
+    return schedulers
 
 
 def wrap_gpu_call(func, extra_outputs=None):

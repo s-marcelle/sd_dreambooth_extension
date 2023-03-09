@@ -42,10 +42,10 @@ from dreambooth.utils.model_utils import (
 )
 from dreambooth.utils.utils import (
     list_attention,
-    list_floats,
+    list_precisions,
     wrap_gpu_call,
     printm,
-    list_optimizer,
+    list_optimizer, list_og_schedulers, list_adapt_schedulers,
 )
 from dreambooth.webhook import save_and_test_webhook
 from helpers.log_parser import LogParser
@@ -450,17 +450,7 @@ def on_ui_tabs():
                             db_lr_scheduler = gr.Dropdown(
                                 label="Learning Rate Scheduler",
                                 value="constant_with_warmup",
-                                choices=[
-                                    "linear",
-                                    "linear_with_warmup",
-                                    "cosine",
-                                    "cosine_annealing",
-                                    "cosine_annealing_with_restarts",
-                                    "cosine_with_restarts",
-                                    "polynomial",
-                                    "constant",
-                                    "constant_with_warmup",
-                                ],
+                                choices=list_og_schedulers(),
                             )
                             db_learning_rate_min = gr.Number(
                                 label="Min Learning Rate", value=1e-6, visible=False
@@ -605,7 +595,7 @@ def on_ui_tabs():
                                     db_mixed_precision = gr.Dropdown(
                                         label="Mixed Precision",
                                         value="no",
-                                        choices=list_floats(),
+                                        choices=list_precisions(),
                                     )
                                     db_attention = gr.Dropdown(
                                         label="Memory Attention",
@@ -1048,7 +1038,7 @@ def on_ui_tabs():
                 )
 
                 def check_toggles(
-                    use_lora, lr_scheduler, train_unet, scale_prior
+                    use_lora, lr_scheduler, opti, train_unet, scale_prior
                 ):
                     stop_text_encoder = update_stop_tenc(train_unet)
                     (
@@ -1067,6 +1057,7 @@ def on_ui_tabs():
                         learning_rate_min,
                         lr_warmup_steps,
                      ) = lr_scheduler_changed(lr_scheduler)
+                    lr_scheduler = optimizer_changed(opti)
                     loss_min, loss_tgt = toggle_loss_items(scale_prior)
                     return (
                         stop_text_encoder,
@@ -1075,6 +1066,7 @@ def on_ui_tabs():
                         lora_save,
                         lora_lr,
                         lora_model,
+                        lr_scheduler,
                         lr_power,
                         lr_cycles,
                         lr_scale_pos,
@@ -1104,6 +1096,7 @@ def on_ui_tabs():
                     inputs=[
                         db_use_lora,
                         db_lr_scheduler,
+                        db_optimizer,
                         db_train_unet,
                         db_prior_loss_scale,
                     ],
@@ -1114,6 +1107,7 @@ def on_ui_tabs():
                         lora_save_col,
                         lora_lr_row,
                         lora_model_row,
+                        db_scheduler,
                         db_lr_power,
                         db_lr_cycles,
                         db_lr_scale_pos,
@@ -1481,7 +1475,11 @@ def on_ui_tabs():
         def optimizer_changed(opti):
             show_adapt = opti in ["SGD Dadaptation", "AdaGrad Dadaptation", "AdamW Dadaptation"]
             adaptation_lr = gr.update(visible=show_adapt)
-            return adaptation_lr
+            lr_scheduler = gr.update(choices=list_adapt_schedulers() if show_adapt else list_og_schedulers())
+            return (
+                adaptation_lr,
+                lr_scheduler,
+            )
 
         def class_gen_method_changed(method):
             show_scheduler = method == "Native Diffusers"
@@ -1517,7 +1515,10 @@ def on_ui_tabs():
         db_optimizer.change(
             fn=optimizer_changed,
             inputs=[db_optimizer],
-            outputs=[adaptation_lr_row],
+            outputs=[
+                adaptation_lr_row,
+                db_lr_scheduler,
+            ],
         )
 
         db_class_gen_method.change(
