@@ -440,7 +440,7 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                 from dadaptation import DAdaptAdaGrad
                 optimizer_class = DAdaptAdaGrad
 
-        except ImportError as a:
+        except Exception as a:
             logger.warning(f"Exception importing {args.optimizer}: {a}")
             traceback.print_exc()
             print("Using default optimizer (AdamW from Torch)")
@@ -602,12 +602,19 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
             optimizer=optimizer,
             num_warmup_steps=args.lr_warmup_steps,
             total_training_steps=sched_train_steps,
+            lr=args.lr,
+            min_lr=args.learning_rate_min,
             total_epochs=args.num_train_epochs,
             num_cycles=args.lr_cycles,
             power=args.lr_power,
             factor=args.lr_factor,
             scale_pos=args.lr_scale_pos,
-            min_lr=args.learning_rate_min,
+            betas=args.betas,
+            momentum=args.momentum,
+            eps=args.eps,
+            weight_decay=args.weight_decay,
+            d0=args.d0,
+            growth_rate=args.growth_rate,
         )
 
         # create ema, fix OOM
