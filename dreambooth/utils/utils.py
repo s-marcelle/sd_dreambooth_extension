@@ -106,25 +106,25 @@ def list_optimizer():
     try:
         from lion_pytorch import Lion
         optimizer_list.append("Lion")
-    except:
+    except ImportError:
         pass
 
     try:
         from dadaptation import DAdaptSGD
         optimizer_list.append("SGD Dadaptation")
-    except:
+    except ImportError:
         pass
 
     try:
         from dadaptation import DAdaptAdaGrad
         optimizer_list.append("AdaGrad Dadaptation")
-    except:
+    except ImportError:
         pass
 
     try:
         from dadaptation import DAdaptAdam
         optimizer_list.append("AdamW Dadaptation")
-    except:
+    except ImportError:
         pass
 
     return optimizer_list

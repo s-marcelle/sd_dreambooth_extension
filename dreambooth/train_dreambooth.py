@@ -440,7 +440,7 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                 from dadaptation import DAdaptAdaGrad
                 optimizer_class = DAdaptAdaGrad
 
-        except Exception as a:
+        except ImportError as a:
             logger.warning(f"Exception importing {args.optimizer}: {a}")
             traceback.print_exc()
             print("Using default optimizer (AdamW from Torch)")

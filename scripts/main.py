@@ -257,95 +257,100 @@ def on_ui_tabs():
             gr.HTML(value="Select or create a model to begin.", elem_id="hint_row")
         with gr.Row().style(equal_height=False):
             with gr.Column(variant="panel", elem_id="ModelPanel"):
-                gr.HTML(value="<span class='hh'>Model</span>")
-                with gr.Tab("Select"):
-                    with gr.Row():
-                        db_model_name = gr.Dropdown(
-                            label="Model", choices=sorted(get_db_models())
-                        )
-                        create_refresh_button(
-                            db_model_name,
-                            get_db_models,
-                            lambda: {"choices": sorted(get_db_models())},
-                            "refresh_db_models",
-                        )
-                    with gr.Row():
-                        db_snapshot = gr.Dropdown(
-                            label="Snapshot to Resume",
-                            choices=sorted(get_model_snapshots()),
-                        )
-                        create_refresh_button(
-                            db_snapshot,
-                            get_model_snapshots,
-                            lambda: {"choices": sorted(get_model_snapshots())},
-                            "refresh_db_snapshots",
-                        )
-                    with gr.Row(visible=False) as lora_model_row:
-                        db_lora_model_name = gr.Dropdown(
-                            label="Lora Model", choices=get_sorted_lora_models()
-                        )
-                        create_refresh_button(
-                            db_lora_model_name,
-                            get_sorted_lora_models,
-                            lambda: {"choices": get_sorted_lora_models()},
-                            "refresh_lora_models",
-                        )
-                    with gr.Row():
-                        gr.HTML(value="Loaded Model:")
-                        db_model_path = gr.HTML()
-                    with gr.Row():
-                        gr.HTML(value="Model Revision:")
-                        db_revision = gr.HTML(elem_id="db_revision")
-                    with gr.Row():
-                        gr.HTML(value="Model Epoch:")
-                        db_epochs = gr.HTML(elem_id="db_epochs")
-                    with gr.Row():
-                        gr.HTML(value="V2 Model:")
-                        db_v2 = gr.HTML(elem_id="db_v2")
-                    with gr.Row():
-                        gr.HTML(value="Has EMA:")
-                        db_has_ema = gr.HTML(elem_id="db_has_ema")
-                    with gr.Row():
-                        gr.HTML(value="Source Checkpoint:")
-                        db_src = gr.HTML()
-                    with gr.Column():
-                        gr.HTML(value="<a href=\"https://github.com/d8ahazard/sd_dreambooth_extension/wiki/ELI5-Training\">Beginners Guide</a>")
-                with gr.Tab("Create"):
-                    with gr.Column():
-                        db_create_model = gr.Button(
-                            value="Create Model", variant="primary"
-                        )
-                    db_new_model_name = gr.Textbox(label="Name")
-                    with gr.Row():
-                        db_create_from_hub = gr.Checkbox(
-                            label="Create From Hub", value=False
-                        )
-                        db_512_model = gr.Checkbox(label="512x Model", value=True)
-                    with gr.Column(visible=False) as hub_row:
-                        db_new_model_url = gr.Textbox(
-                            label="Model Path",
-                            placeholder="runwayml/stable-diffusion-v1-5",
-                        )
-                        db_new_model_token = gr.Textbox(
-                            label="HuggingFace Token", value=""
-                        )
-                    with gr.Column(visible=True) as local_row:
+                with gr.Column():
+                    gr.HTML(value="<span class='hh'>Model</span>")
+                    with gr.Tab("Select"):
                         with gr.Row():
-                            db_new_model_src = gr.Dropdown(
-                                label="Source Checkpoint",
-                                choices=sorted(get_sd_models()),
+                            db_model_name = gr.Dropdown(
+                                label="Model", choices=sorted(get_db_models())
                             )
                             create_refresh_button(
-                                db_new_model_src,
-                                get_sd_models,
-                                lambda: {"choices": sorted(get_sd_models())},
-                                "refresh_sd_models",
+                                db_model_name,
+                                get_db_models,
+                                lambda: {"choices": sorted(get_db_models())},
+                                "refresh_db_models",
                             )
-                    db_new_model_extract_ema = gr.Checkbox(
-                        label="Extract EMA Weights", value=False
-                    )
-                    db_train_unfrozen = gr.Checkbox(label="Unfreeze Model", value=False)
-
+                        with gr.Row():
+                            db_snapshot = gr.Dropdown(
+                                label="Snapshot to Resume",
+                                choices=sorted(get_model_snapshots()),
+                            )
+                            create_refresh_button(
+                                db_snapshot,
+                                get_model_snapshots,
+                                lambda: {"choices": sorted(get_model_snapshots())},
+                                "refresh_db_snapshots",
+                            )
+                        with gr.Row(visible=False) as lora_model_row:
+                            db_lora_model_name = gr.Dropdown(
+                                label="Lora Model", choices=get_sorted_lora_models()
+                            )
+                            create_refresh_button(
+                                db_lora_model_name,
+                                get_sorted_lora_models,
+                                lambda: {"choices": get_sorted_lora_models()},
+                                "refresh_lora_models",
+                            )
+                        with gr.Row():
+                            gr.HTML(value="Loaded Model:")
+                            db_model_path = gr.HTML()
+                        with gr.Row():
+                            gr.HTML(value="Model Revision:")
+                            db_revision = gr.HTML(elem_id="db_revision")
+                        with gr.Row():
+                            gr.HTML(value="Model Epoch:")
+                            db_epochs = gr.HTML(elem_id="db_epochs")
+                        with gr.Row():
+                            gr.HTML(value="V2 Model:")
+                            db_v2 = gr.HTML(elem_id="db_v2")
+                        with gr.Row():
+                            gr.HTML(value="Has EMA:")
+                            db_has_ema = gr.HTML(elem_id="db_has_ema")
+                        with gr.Row():
+                            gr.HTML(value="Source Checkpoint:")
+                            db_src = gr.HTML()
+                    with gr.Tab("Create"):
+                        with gr.Column():
+                            db_create_model = gr.Button(
+                                value="Create Model", variant="primary"
+                            )
+                        db_new_model_name = gr.Textbox(label="Name")
+                        with gr.Row():
+                            db_create_from_hub = gr.Checkbox(
+                                label="Create From Hub", value=False
+                            )
+                            db_512_model = gr.Checkbox(label="512x Model", value=True)
+                        with gr.Column(visible=False) as hub_row:
+                            db_new_model_url = gr.Textbox(
+                                label="Model Path",
+                                placeholder="runwayml/stable-diffusion-v1-5",
+                            )
+                            db_new_model_token = gr.Textbox(
+                                label="HuggingFace Token", value=""
+                            )
+                        with gr.Column(visible=True) as local_row:
+                            with gr.Row():
+                                db_new_model_src = gr.Dropdown(
+                                    label="Source Checkpoint",
+                                    choices=sorted(get_sd_models()),
+                                )
+                                create_refresh_button(
+                                    db_new_model_src,
+                                    get_sd_models,
+                                    lambda: {"choices": sorted(get_sd_models())},
+                                    "refresh_sd_models",
+                                )
+                        db_new_model_extract_ema = gr.Checkbox(
+                            label="Extract EMA Weights", value=False
+                        )
+                        db_train_unfrozen = gr.Checkbox(label="Unfreeze Model", value=False)
+                with gr.Column():
+                    with gr.Row():
+                        gr.HTML(value="Beginners Guide:")
+                        gr.HTML(
+                            value="<a href=\"https://github.com/d8ahazard/sd_dreambooth_extension/wiki/ELI5-Training\">ELI5-Training</a>",
+                            elem_id="hyperlink"
+                        )
             with gr.Column(variant="panel", elem_id="SettingsPanel"):
                 gr.HTML(value="<span class='hh'>Input</span>")
                 with gr.Tab("Settings", elem_id="TabSettings"):
