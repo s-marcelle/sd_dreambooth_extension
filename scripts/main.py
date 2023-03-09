@@ -364,9 +364,13 @@ def on_ui_tabs():
                                 value=False,
                                 visible=False,
                             )
-                            db_use_txt2img = gr.Checkbox(
-                                label="Generate Classification Images Using txt2img",
-                                value=False,
+                            db_class_gen_method = gr.Dropdown(
+                                label="Class Image Generation Method",
+                                value="Diffusers DEIS",
+                                choices=[
+                                    "A1111 txt2img (DPM++ 2S a Karras)",
+                                    "Diffusers DEIS",
+                                ]
                             )
                         with gr.Column():
                             gr.HTML(value="Intervals")
@@ -431,17 +435,6 @@ def on_ui_tabs():
                                 label="Gradient Checkpointing", value=True
                             )
 
-                        schedulers = [
-                            "linear",
-                            "linear_with_warmup",
-                            "cosine",
-                            "cosine_annealing",
-                            "cosine_annealing_with_restarts",
-                            "cosine_with_restarts",
-                            "polynomial",
-                            "constant",
-                            "constant_with_warmup",
-                        ]
                         with gr.Column():
                             gr.HTML(value="Learning Rate")
                             with gr.Row(visible=False) as lora_lr_row:
@@ -459,7 +452,17 @@ def on_ui_tabs():
                             db_lr_scheduler = gr.Dropdown(
                                 label="Learning Rate Scheduler",
                                 value="constant_with_warmup",
-                                choices=schedulers,
+                                choices=[
+                                    "linear",
+                                    "linear_with_warmup",
+                                    "cosine",
+                                    "cosine_annealing",
+                                    "cosine_annealing_with_restarts",
+                                    "cosine_with_restarts",
+                                    "polynomial",
+                                    "constant",
+                                    "constant_with_warmup",
+                                ],
                             )
                             db_learning_rate_min = gr.Number(
                                 label="Min Learning Rate", value=1e-6, visible=False
@@ -976,8 +979,13 @@ def on_ui_tabs():
                     db_tf32_enable = gr.Checkbox(
                         label="Use TensorFloat 32", value=False
                     )
-                    db_deis_train_scheduler = gr.Checkbox(
-                        label="Use DEIS for noise scheduler", value=False
+                    db_noise_scheduler = gr.Dropdown(
+                        label="Noise scheduler",
+                        value="DDPM",
+                        choices=[
+                            "DDPM",
+                            "DEIS",
+                        ]
                     )
                     db_update_extension = gr.Button(
                         value="Update Extension and Restart"
@@ -1207,7 +1215,7 @@ def on_ui_tabs():
             db_clip_skip,
             db_concepts_path,
             db_custom_model_name,
-            db_deis_train_scheduler,
+            db_noise_scheduler,
             db_deterministic,
             db_ema_predict,
             db_epochs,
@@ -1649,14 +1657,14 @@ def on_ui_tabs():
         db_train_model.click(
             fn=wrap_gpu_call(start_training),
             _js="db_start_train",
-            inputs=[db_model_name, db_use_txt2img],
+            inputs=[db_model_name, db_class_gen_method],
             outputs=[db_lora_model_name, db_revision, db_epochs, db_gallery, db_status],
         )
 
         db_generate_classes.click(
             _js="db_start_classes",
             fn=wrap_gpu_call(ui_classifiers),
-            inputs=[db_model_name, db_use_txt2img],
+            inputs=[db_model_name, db_class_gen_method],
             outputs=[db_gallery, db_status],
         )
 

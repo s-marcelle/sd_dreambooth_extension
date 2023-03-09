@@ -133,9 +133,9 @@ def stop_profiler(profiler):
             pass
 
 
-def main(use_txt2img: bool = True) -> TrainResult:
+def main(class_gen_method: str = "Diffusers DEIS") -> TrainResult:
     """
-    @param use_txt2img: Use txt2img when generating class images.
+    @param class_gen_method: Class image generation method.
     @return: TrainResult
     """
     args = shared.db_model_config
@@ -215,14 +215,14 @@ def main(use_txt2img: bool = True) -> TrainResult:
             status.textinfo = msg
             stop_text_percentage = 0
         count, instance_prompts, class_prompts = generate_classifiers(
-            args, use_txt2img=use_txt2img, accelerator=accelerator, ui=False
+            args, class_gen_method=class_gen_method, accelerator=accelerator, ui=False
         )
         if status.interrupted:
             result.msg = "Training interrupted."
             stop_profiler(profiler)
             return result
 
-        if use_txt2img and count > 0:
+        if class_gen_method == "Diffusers DEIS" and count > 0:
             unload_system_models()
 
         def create_vae():
@@ -476,8 +476,7 @@ def main(use_txt2img: bool = True) -> TrainResult:
             weight_decay=args.adamw_weight_decay,
         )
 
-        if args.deis_train_scheduler:
-            print("Using DEIS for noise scheduler.")
+        if args.noise_scheduler == "DEIS":
             noise_scheduler = DEISMultistepScheduler.from_pretrained(
                 args.pretrained_model_name_or_path, subfolder="scheduler"
             )
