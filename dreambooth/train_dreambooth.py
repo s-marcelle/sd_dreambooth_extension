@@ -133,7 +133,7 @@ def stop_profiler(profiler):
             pass
 
 
-def main(class_gen_method: str = "Diffusers DEIS") -> TrainResult:
+def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
     """
     @param class_gen_method: Class image generation method.
     @return: TrainResult
@@ -222,7 +222,7 @@ def main(class_gen_method: str = "Diffusers DEIS") -> TrainResult:
             stop_profiler(profiler)
             return result
 
-        if class_gen_method == "Diffusers DEIS" and count > 0:
+        if class_gen_method == "Native Diffusers" and count > 0:
             unload_system_models()
 
         def create_vae():

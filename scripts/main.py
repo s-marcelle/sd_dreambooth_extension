@@ -308,7 +308,8 @@ def on_ui_tabs():
                     with gr.Row():
                         gr.HTML(value="Source Checkpoint:")
                         db_src = gr.HTML()
-
+                    with gr.Column():
+                        gr.HTML(value="<a href=\"https://github.com/d8ahazard/sd_dreambooth_extension/wiki/ELI5-Training\">Beginners Guide</a>")
                 with gr.Tab("Create"):
                     with gr.Column():
                         db_create_model = gr.Button(
@@ -354,23 +355,15 @@ def on_ui_tabs():
                             gr.HTML(value="General")
                             db_use_lora = gr.Checkbox(label="Use LORA", value=False)
                             db_use_lora_extended = gr.Checkbox(
-                                label="Use Lora Extended", value=False
+                                label="Use Lora Extended",
+                                value=False,
+                                visible=False,
                             )
-                            db_train_imagic_only = gr.Checkbox(
-                                label="Train Imagic Only", value=False
-                            )
+                            db_train_imagic_only = gr.Checkbox(label="Train Imagic Only", value=False)
                             db_train_inpainting = gr.Checkbox(
                                 label="Train Inpainting Model",
                                 value=False,
                                 visible=False,
-                            )
-                            db_class_gen_method = gr.Dropdown(
-                                label="Class Image Generation Method",
-                                value="Diffusers DEIS",
-                                choices=[
-                                    "A1111 txt2img (DPM++ 2S a Karras)",
-                                    "Diffusers DEIS",
-                                ]
                             )
                         with gr.Column():
                             gr.HTML(value="Intervals")
@@ -881,6 +874,19 @@ def on_ui_tabs():
                             label="Save separate diffusers snapshots when training is canceled."
                         )
                 with gr.Tab("Generate", elem_id="TabGenerate"):
+                    db_class_gen_method = gr.Dropdown(
+                        label="Class Image Generation Method",
+                        value="Native Diffusers",
+                        choices=[
+                            "A1111 txt2img (DPM++ 2S a Karras)",
+                            "Native Diffusers",
+                        ]
+                    )
+                    db_scheduler = gr.Dropdown(
+                        label="Scheduler",
+                        value="DEISMultistep",
+                        choices=get_scheduler_names(),
+                    )
                     with gr.Column():
                         db_generate_classes = gr.Button(value="Generate Class Images")
                         db_generate_graph = gr.Button(value="Generate Graph")
@@ -955,11 +961,6 @@ def on_ui_tabs():
                             minimum=1,
                             maximum=20,
                         )
-                        db_scheduler = gr.Dropdown(
-                            label="Scheduler",
-                            choices=get_scheduler_names(),
-                            value="DEISMultistep",
-                        )
                         with gr.Column(variant="panel", visible=has_face_swap()):
                             db_swap_faces = gr.Checkbox(label="Swap Sample Faces")
                             db_swap_prompt = gr.Textbox(label="Swap Prompt")
@@ -968,7 +969,9 @@ def on_ui_tabs():
                             db_swap_batch = gr.Slider(label="Swap Batch", value=40)
 
                         db_sample_txt2img = gr.Checkbox(
-                            label="Use txt2img", value=False
+                            label="Use txt2img",
+                            value=False,
+                            visible=False  # db_sample_txt2img not implemented yet
                         )
                 with gr.Tab("Testing", elem_id="TabDebug"):
                     db_deterministic = gr.Checkbox(label="Deterministic")
@@ -1042,6 +1045,7 @@ def on_ui_tabs():
                     stop_text_encoder = update_stop_tenc(train_unet)
                     (
                         show_ema,
+                        use_lora_extended,
                         lora_save,
                         lora_lr,
                         standard_lr,
@@ -1059,6 +1063,7 @@ def on_ui_tabs():
                     return (
                         stop_text_encoder,
                         show_ema,
+                        use_lora_extended,
                         lora_save,
                         lora_lr,
                         lora_model,
@@ -1097,6 +1102,7 @@ def on_ui_tabs():
                     outputs=[
                         db_stop_text_encoder,
                         db_use_ema,
+                        db_use_lora_extended,
                         lora_save_col,
                         lora_lr_row,
                         lora_model_row,
@@ -1420,12 +1426,14 @@ def on_ui_tabs():
 
         def disable_lora(x):
             use_ema = gr.update(interactive=not x)
+            use_lora_extended = gr.update(visible=x)
             lora_save = gr.update(visible=x)
             lora_lr = gr.update(visible=x)
             standard_lr = gr.update(visible=not x)
             lora_model = gr.update(visible=x)
             return (
                 use_ema,
+                use_lora_extended,
                 lora_save,
                 lora_lr,
                 standard_lr,
@@ -1467,11 +1475,17 @@ def on_ui_tabs():
             adaptation_lr = gr.update(visible=show_adapt)
             return adaptation_lr
 
+        def class_gen_method_changed(method):
+            show_scheduler = method == "Native Diffusers"
+            scheduler = gr.update(visible=show_scheduler)
+            return scheduler
+
         db_use_lora.change(
             fn=disable_lora,
             inputs=[db_use_lora],
             outputs=[
                 db_use_ema,
+                db_use_lora_extended,
                 lora_save_col,
                 lora_lr_row,
                 standard_lr_row,
@@ -1496,6 +1510,12 @@ def on_ui_tabs():
             fn=optimizer_changed,
             inputs=[db_optimizer],
             outputs=[adaptation_lr_row],
+        )
+
+        db_class_gen_method.change(
+            fn=class_gen_method_changed,
+            inputs=[db_class_gen_method],
+            outputs=[db_scheduler],
         )
 
         db_model_name.change(

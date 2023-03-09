@@ -25,7 +25,7 @@ from lora_diffusion.lora import _text_lora_path_ui, patch_pipe, tune_lora_scale,
 class ImageBuilder:
     def __init__(
             self, config: DreamboothConfig,
-            class_gen_method: str = "Diffusers DEIS",
+            class_gen_method: str = "Native Diffusers",
             lora_model: str = None,
             batch_size: int = 1,
             accelerator: Accelerator = None,

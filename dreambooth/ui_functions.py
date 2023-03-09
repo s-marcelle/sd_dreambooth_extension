@@ -417,7 +417,7 @@ def generate_samples(
     seed: int,
     steps: int,
     scale: float,
-    class_gen_method: str = "Diffusers DEIS",
+    class_gen_method: str = "Native Diffusers",
     scheduler: str = "UniPCMultistep",
     swap_faces: bool = False,
     swap_prompt: str = "",
@@ -673,7 +673,7 @@ def load_model_params(model_name):
         )
 
 
-def start_training(model_dir: str, class_gen_method: str = "Diffusers DEIS"):
+def start_training(model_dir: str, class_gen_method: str = "Native Diffusers"):
     """
 
     @param model_dir: The directory containing the dreambooth model/config
@@ -814,7 +814,7 @@ def update_extension():
     reload_extension()
 
 
-def ui_classifiers(model_name: str, class_gen_method: str = "Diffusers DEIS"):
+def ui_classifiers(model_name: str, class_gen_method: str = "Native Diffusers"):
     """
     UI method for generating class images.
     @param model_name: The model to generate classes for.
