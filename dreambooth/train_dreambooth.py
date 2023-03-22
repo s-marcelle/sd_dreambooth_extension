@@ -441,43 +441,97 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
         try:
             if args.optimizer == "8bit AdamW":
                 from bitsandbytes.optim import AdamW8bit
+                optimizer = AdamW8bit(
+                    params_to_optimize,
+                    lr=args.learning_rate,
+                    weight_decay=args.adamw_weight_decay,
+                    #decouple=True,
+                )
                 optimizer_class = AdamW8bit
 
             elif args.optimizer == "Lion":
                 from lion_pytorch import Lion
+                optimizer = Lion(
+                    params_to_optimize,
+                    lr=args.learning_rate,
+                    weight_decay=args.adamw_weight_decay,
+                )
                 optimizer_class = Lion
 
             elif args.optimizer == "SGD Dadaptation":
                 from dadaptation import DAdaptSGD
+                optimizer = DAdaptSGD(
+                params_to_optimize,
+                lr=args.learning_rate,
+                momentum=0.9,
+                weight_decay=args.adamw_weight_decay,
+                d0=1e-6,
+                growth_rate=float('inf'),
+                )
                 optimizer_class = DAdaptSGD
 
             elif args.optimizer == "AdamW Dadaptation":
                 from dadaptation import DAdaptAdam
+                optimizer = DAdaptAdam(
+                    params_to_optimize,
+                    lr=args.learning_rate,
+                    weight_decay=args.adamw_weight_decay,
+                    decouple=True,
+                    betas=(0.9, 0.999),
+                    eps=1e-8,
+                    d0=1e-6,
+                    growth_rate=float('inf'),
+                    )
                 optimizer_class = DAdaptAdam
 
-            elif args.optimizer == "Adagrad Dadaptation":
-                from dadaptation import DAdaptAdaGrad
-                optimizer_class = DAdaptAdaGrad
+            # Too temperamental to for me to find a working config
+            #elif args.optimizer == "Adagrad Dadaptation":
+            #    from dadaptation import DAdaptAdaGrad
+            #    optimizer = DAdaptAdaGrad(
+            #        params_to_optimize,
+            #        lr=args.learning_rate,
+            #        eps=1e-8,
+            #        weight_decay=args.adamw_weight_decay,
+            #        )
+            #    optimizer_class = DAdaptAdaGrad
 
             elif args.optimizer == "Adan Dadaptation":
                 from dreambooth.dadapt_adan import DAdaptAdan
+                optimizer = DAdaptAdan(
+                    params_to_optimize,
+                    lr=args.learning_rate,
+                    weight_decay=args.adamw_weight_decay,
+                    betas=(0.98, 0.92, 0.99),
+                    eps=1e-8,
+                    growth_rate=float('inf'),
+                    no_prox=False,
+                    d0=1e-6,
+                    )
                 optimizer_class = DAdaptAdan
 
             else:
-                optimizer_class = torch.optim.AdamW
+                from torch.optim import AdamW
+                optimizer = AdamW(
+                    params_to_optimize,
+                    lr=args.learning_rate,
+                    weight_decay=args.adamw_weight_decay,
+                )
+                optimizer_class = AdamW
+
 
         except Exception as e:
             logger.warning(f"Exception importing {args.optimizer}: {e}")
             traceback.print_exc()
             print(str(e))
             print("WARNING: Using default optimizer (AdamW from Torch)")
-            optimizer_class = torch.optim.AdamW
 
-        optimizer = optimizer_class(
-            params_to_optimize,
-            lr=args.learning_rate,
-            weight_decay=args.adamw_weight_decay,
-        )
+            from torch.optim import AdamW
+            optimizer = AdamW(
+                params_to_optimize,
+                lr=args.learning_rate,
+                weight_decay=args.adamw_weight_decay,
+            )
+            optimizer_class = AdamW
 
         if args.noise_scheduler == "DEIS":
             noise_scheduler = DEISMultistepScheduler.from_pretrained(

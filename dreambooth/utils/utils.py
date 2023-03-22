@@ -90,6 +90,7 @@ def xformers_check():
         _xformers_version = importlib_metadata.version("xformers")
         if _torch_available:
             import torch
+
             if version.Version(torch.__version__) < version.Version("1.12"):
                 raise ValueError("PyTorch version must be >= 1.12")
             if version.Version(_xformers_version) < version.Version("0.0.17.dev"):
@@ -123,11 +124,12 @@ def list_optimizer():
     except ImportError:
         pass
 
-    try:
-        from dadaptation import DAdaptAdaGrad
-        optimizer_list.append("AdaGrad Dadaptation")
-    except ImportError:
-        pass
+#    try:
+#        from dadaptation import DAdaptAdaGrad
+
+#        optimizer_list.append("AdaGrad Dadaptation")
+#    except ImportError:
+#        pass
 
     try:
         from dadaptation import DAdaptAdam
