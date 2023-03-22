@@ -28,8 +28,6 @@ class DreamboothConfig(BaseModel):
     adaptation_beta2: int = 0
     adaptation_d0: float = 1e-8
     adaptation_eps: float = 1e-8
-    adaptation_growth_rate: float = 1e-8
-    adaptation_momentum: int = 0
     attention: str = "xformers"
     cache_latents: bool = True
     clip_skip: int = 1
@@ -133,6 +131,9 @@ class DreamboothConfig(BaseModel):
         # If we're using the new UI, this should be populated, so load models from here.
         if len(shared.paths):
             models_path = os.path.join(shared.paths["models"], "dreambooth")
+
+        if not self.use_lora:
+            self.lora_model_name = ""
 
         model_dir = os.path.join(models_path, model_name)
         print(f"Model dir set to: {model_dir}")
@@ -253,13 +254,19 @@ class DreamboothConfig(BaseModel):
 
     # Set default values
     def check_defaults(self):
-        if self.model_name is not None and self.model_name != "":
+        if self.model_name:
             if self.revision == "" or self.revision is None:
                 self.revision = 0
             if self.epoch == "" or self.epoch is None:
                 self.epoch = 0
             self.model_name = "".join(x for x in self.model_name if (x.isalnum() or x in "._- "))
             models_path = shared.dreambooth_models_path
+            try:
+                from core.handlers.models import ModelHandler
+                mh = ModelHandler()
+                models_path = mh.models_path
+            except:
+                pass
             if models_path == "" or models_path is None:
                 models_path = os.path.join(shared.models_path, "dreambooth")
             model_dir = os.path.join(models_path, self.model_name)

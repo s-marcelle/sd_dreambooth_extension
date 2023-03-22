@@ -1,5 +1,6 @@
 import glob
 import importlib
+import importlib.util
 import json
 import logging
 import math
@@ -14,33 +15,18 @@ import torch.utils.checkpoint
 import torch.utils.data.dataloader
 from accelerate import find_executable_batch_size
 from diffusers.utils import logging as dl
+from torch.optim import AdamW
 
 from dreambooth import shared
 from dreambooth.dataclasses import db_config
-from dreambooth.dataclasses.db_config import (
-    from_file,
-    sanitize_name,
-)
-from dreambooth.dataclasses.prompt_data import (
-    PromptData,
-)
-from dreambooth.dataset.bucket_sampler import (
-    BucketSampler,
-)
-from dreambooth.dataset.class_dataset import (
-    ClassDataset,
-)
-from dreambooth.optimization import (
-    UniversalScheduler,
-)
-from dreambooth.sd_to_diff import (
-    extract_checkpoint,
-)
+from dreambooth.dataclasses.db_config import from_file, sanitize_name
+from dreambooth.dataclasses.prompt_data import PromptData
+from dreambooth.dataset.bucket_sampler import BucketSampler
+from dreambooth.dataset.class_dataset import ClassDataset
+from dreambooth.optimization import UniversalScheduler
+from dreambooth.sd_to_diff import extract_checkpoint
 from dreambooth.shared import status, run
-from dreambooth.utils.gen_utils import (
-    generate_dataset,
-    generate_classifiers,
-)
+from dreambooth.utils.gen_utils import generate_dataset, generate_classifiers
 from dreambooth.utils.image_utils import (
     get_images,
     db_save_image,
@@ -56,10 +42,7 @@ from dreambooth.utils.model_utils import (
     get_checkpoint_match,
     get_model_snapshots,
 )
-from dreambooth.utils.utils import (
-    printm,
-    cleanup,
-)
+from dreambooth.utils.utils import printm, cleanup
 from helpers.image_builder import ImageBuilder
 from helpers.mytqdm import mytqdm
 
@@ -125,7 +108,7 @@ def largest_prime_factor(n):
         n = n // 2
 
     # Check the remaining odd factors of n
-    for i in range(3, int(n**0.5) + 1, 2):
+    for i in range(3, int(n ** 0.5) + 1, 2):
         # Divide n by i as many times as possible
         while n % i == 0:
             largest_factor = i
@@ -140,7 +123,7 @@ def largest_prime_factor(n):
 
 def closest_factors_to_sqrt(n):
     # Find the square root of n
-    sqrt_n = int(n**0.5)
+    sqrt_n = int(n ** 0.5)
 
     # Initialize the factors to the square root and 1
     f1, f2 = sqrt_n, 1
@@ -213,7 +196,7 @@ def performance_wizard(model_name):
         total_images = 0
         for concept in config.concepts():
             idd = concept.instance_data_dir
-            if idd != "" and idd is not None and os.path.exists(idd):
+            if idd and os.path.exists(idd):
                 images = get_images(idd)
                 total_images += len(images)
         print(f"Total images: {total_images}")
@@ -406,24 +389,24 @@ def get_script_class():
 
 
 def generate_samples(
-    model_name: str,
-    prompt: str,
-    prompt_file: str,
-    negative_prompt: str,
-    width: int,
-    height: int,
-    num_samples: int,
-    batch_size: int,
-    seed: int,
-    steps: int,
-    scale: float,
-    class_gen_method: str = "Native Diffusers",
-    scheduler: str = "UniPCMultistep",
-    swap_faces: bool = False,
-    swap_prompt: str = "",
-    swap_negative: str = "",
-    swap_steps: int = 40,
-    swap_batch: int = 1,
+        model_name: str,
+        prompt: str,
+        prompt_file: str,
+        negative_prompt: str,
+        width: int,
+        height: int,
+        num_samples: int,
+        batch_size: int,
+        seed: int,
+        steps: int,
+        scale: float,
+        class_gen_method: str = "Native Diffusers",
+        scheduler: str = "UniPCMultistep",
+        swap_faces: bool = False,
+        swap_prompt: str = "",
+        swap_negative: str = "",
+        swap_steps: int = 40,
+        swap_batch: int = 1,
 ):
     if batch_size > num_samples:
         batch_size = num_samples
@@ -435,7 +418,7 @@ def generate_samples(
         config = from_file(model_name)
         source_model = None
 
-        if class_gen_method == "A1111 txt2img (DPM++ 2S a Karras)":
+        if class_gen_method == "A1111 txt2img (Euler a)":
             tgt_name = (
                 model_name if not config.custom_model_name else config.custom_model_name
             )
@@ -677,7 +660,7 @@ def start_training(model_dir: str, class_gen_method: str = "Native Diffusers"):
     """
 
     @param model_dir: The directory containing the dreambooth model/config
-    @param class_gen_method: Class image generation method.
+    @param class_gen_method: Image Generation Library.
     @return:
     lora_model_name: If using lora, this will be the model name of the saved weights. (For resuming further training)
     revision: The model revision after training.
@@ -703,10 +686,7 @@ def start_training(model_dir: str, class_gen_method: str = "Native Diffusers"):
         msg = "Please configure some concepts."
     if not os.path.exists(config.pretrained_model_name_or_path):
         msg = "Invalid training data directory."
-    if (
-        config.pretrained_vae_name_or_path != ""
-        and config.pretrained_vae_name_or_path is not None
-    ):
+    if config.pretrained_vae_name_or_path:
         if not os.path.exists(config.pretrained_vae_name_or_path):
             msg = "Invalid Pretrained VAE Path."
     if config.resolution <= 0:
@@ -761,14 +741,13 @@ def start_training(model_dir: str, class_gen_method: str = "Native Diffusers"):
         )
     except Exception as e:
         res = f"Exception training model: '{e}'."
-        status.end()
         traceback.print_exc()
         pass
 
     cleanup()
     reload_system_models()
     lora_model_name = ""
-    if config.lora_model_name != "" and config.lora_model_name is not None:
+    if config.lora_model_name:
         lora_model_name = f"{config.model_name}_{total_steps}.pt"
     dirs = get_lora_models()
     lora_model_name = gr_update(choices=sorted(dirs), value=lora_model_name)
@@ -818,7 +797,7 @@ def ui_classifiers(model_name: str, class_gen_method: str = "Native Diffusers"):
     """
     UI method for generating class images.
     @param model_name: The model to generate classes for.
-    @param class_gen_method" Class image generation method.
+    @param class_gen_method" Image Generation Library.
     @return:
     """
     if model_name == "" or model_name is None:
@@ -839,10 +818,7 @@ def ui_classifiers(model_name: str, class_gen_method: str = "Native Diffusers"):
         msg = "Please configure some concepts."
     if not os.path.exists(config.pretrained_model_name_or_path):
         msg = "Invalid training data directory."
-    if (
-        config.pretrained_vae_name_or_path != ""
-        and config.pretrained_vae_name_or_path is not None
-    ):
+    if config.pretrained_vae_name_or_path:
         if not os.path.exists(config.pretrained_vae_name_or_path):
             msg = "Invalid Pretrained VAE Path."
     if config.resolution <= 0:
@@ -856,7 +832,7 @@ def ui_classifiers(model_name: str, class_gen_method: str = "Native Diffusers"):
     images = []
     try:
         unload_system_models()
-        count, images = generate_classifiers(config, use_txt2img=use_txt2img, ui=True)
+        count, images = generate_classifiers(config, ui=True)
         reload_system_models()
         msg = f"Generated {count} class images."
     except Exception as e:
@@ -868,12 +844,11 @@ def ui_classifiers(model_name: str, class_gen_method: str = "Native Diffusers"):
 
 
 def start_crop(
-    src_dir: str, dest_dir: str, max_res: int, bucket_step: int, dry_run: bool
+        src_dir: str, dest_dir: str, max_res: int, bucket_step: int, dry_run: bool
 ):
     src_images = get_images(src_dir)
-    min_res = (int(max_res * 0.28125) // 64) * 64
 
-    bucket_resos = make_bucket_resolutions(max_res)
+    bucket_resos = make_bucket_resolutions(max_res, bucket_step)
 
     max_dim = 0
     for (w, h) in bucket_resos:
@@ -944,26 +919,36 @@ def start_crop(
         out_status = (
             f"{'Saved' if not dry_run else 'Previewed'} {total_images} cropped images."
         )
-    shared.status.end()
+    status.end()
     return out_status, out_images
 
 
 def create_model(
-    new_model_name: str,
-    ckpt_path: str,
-    from_hub=False,
-    new_model_url="",
-    new_model_token="",
-    extract_ema=False,
-    train_unfrozen=False,
-    is_512=True,
+        new_model_name: str,
+        ckpt_path: str,
+        from_hub=False,
+        new_model_url="",
+        new_model_token="",
+        extract_ema=False,
+        train_unfrozen=False,
+        is_512=True,
 ):
     printm("Extracting model.")
     res = 512 if is_512 else 768
+    sh = None
+    try:
+        from core.handlers.status import StatusHandler
+        sh = StatusHandler()
+        sh.start(5, "Extracting model")
+    except:
+        pass
     status.begin()
     if new_model_name is None or new_model_name == "":
         print("No model name.")
         err_msg = "Please select a model"
+        if sh is not None:
+            sh.end(desc=err_msg)
+
         return "", "", 0, 0, "", "", "", "", res, "", err_msg
 
     new_model_name = sanitize_name(new_model_name)
@@ -973,6 +958,8 @@ def create_model(
         if checkpoint_info is None or not os.path.exists(checkpoint_info.filename):
             err_msg = "Unable to find checkpoint file!"
             print(err_msg)
+            if sh is not None:
+                sh.end(desc=err_msg)
             return "", "", 0, 0, "", "", "", "", res, "", err_msg
         ckpt_path = checkpoint_info.filename
 
@@ -987,10 +974,19 @@ def create_model(
         train_unfrozen,
         is_512,
     )
+    try:
+        from core.handlers.models import ModelHandler
+        mh = ModelHandler()
+        mh.refresh("dreambooth")
+    except:
+        pass
+
     cleanup()
     reload_system_models()
     printm("Extraction complete.")
-    status.end()
+    if sh is not None:
+        sh.end(desc="Extraction complete.")
+
     return result
 
 
@@ -998,7 +994,7 @@ def debug_collate_fn(examples):
     input_ids = [example["input_ids"] for example in examples]
     pixel_values = [example["image"] for example in examples]
     loss_weights = torch.tensor(
-        [example["loss_weight"] for example in examples], dtype=torch.float32
+        [example["res"] for example in examples], dtype=torch.float32
     )
     batch = {
         "input_ids": input_ids,
@@ -1012,9 +1008,11 @@ def debug_buckets(model_name, num_epochs, batch_size):
     print("Debug click?")
     status.textinfo = "Preparing dataset..."
     if model_name == "" or model_name is None:
+        status.end()
         return "No model selected."
     args = from_file(model_name)
     if args is None:
+        status.end()
         return "Invalid config."
     print("Preparing prompt dataset...")
 
@@ -1032,37 +1030,26 @@ def debug_buckets(model_name, num_epochs, batch_size):
         debug=True,
         model_dir=args.model_dir,
     )
-    optimizer_class = torch.optim.AdamW
+
     placeholder = [torch.Tensor(10, 20)]
     sched_train_steps = args.num_train_epochs * dataset.__len__()
-    optimizer = optimizer_class(
+
+    optimizer = AdamW(
         placeholder, lr=args.learning_rate, weight_decay=args.adamw_weight_decay
     )
 
-    if (
-        optimizer_class == "DAdaptSGD"
-        or optimizer_class == "DAdaptAdam"
-        or optimizer_class == "DAdaptAdaGrad"
-    ):
-        lr_scheduler = LambdaLR(
-            optimizer=optimizer,
-            lr_lambda=[lambda epoch: 0.5, lambda epoch: 1],
-            last_epoch=-1,
-            verbose=False,
-        )
-    else:
-        lr_scheduler = UniversalScheduler(
-            args.lr_scheduler,
-            optimizer=optimizer,
-            num_warmup_steps=args.lr_warmup_steps,
-            total_training_steps=sched_train_steps,
-            total_epochs=num_epochs,
-            num_cycles=args.lr_cycles,
-            power=args.lr_power,
-            factor=args.lr_factor,
-            scale_pos=args.lr_scale_pos,
-            min_lr=args.learning_rate_min,
-        )
+    lr_scheduler = UniversalScheduler(
+        args.lr_scheduler,
+        optimizer=optimizer,
+        num_warmup_steps=args.lr_warmup_steps,
+        total_training_steps=sched_train_steps,
+        total_epochs=num_epochs,
+        num_cycles=args.lr_cycles,
+        power=args.lr_power,
+        factor=args.lr_factor,
+        scale_pos=args.lr_scale_pos,
+        min_lr=args.learning_rate_min,
+    )
 
     sampler = BucketSampler(dataset, args.train_batch_size, True)
     n_workers = 0
@@ -1107,7 +1094,6 @@ def debug_buckets(model_name, num_epochs, batch_size):
     bucket_file = os.path.join(samples_dir, "prompts.json")
     with open(bucket_file, "w") as outfile:
         json.dump(lines, outfile, indent=4)
-    status.end()
     try:
         del dataloader
         del dataset.tokenizer
@@ -1117,4 +1103,5 @@ def debug_buckets(model_name, num_epochs, batch_size):
         cleanup()
     except:
         pass
+    status.end()
     return "", f"Debug output saved to {bucket_file}"

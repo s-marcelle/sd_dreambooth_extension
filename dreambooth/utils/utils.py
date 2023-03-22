@@ -66,14 +66,14 @@ def cleanup(do_print: bool = False):
 
 
 def xformers_check():
-    ENV_VARS_TRUE_VALUES = {"1", "ON", "YES", "TRUE"}
-    ENV_VARS_TRUE_AND_AUTO_VALUES = ENV_VARS_TRUE_VALUES.union({"AUTO"})
+    env_vars_true_values = {"1", "ON", "YES", "TRUE"}
+    env_vars_true_and_auto_values = env_vars_true_values.union({"AUTO"})
 
-    USE_TF = os.environ.get("USE_TF", "AUTO").upper()
-    USE_TORCH = os.environ.get("USE_TORCH", "AUTO").upper()
+    use_tf = os.environ.get("USE_TF", "AUTO").upper()
+    use_torch = os.environ.get("USE_TORCH", "AUTO").upper()
     if (
-        USE_TORCH in ENV_VARS_TRUE_AND_AUTO_VALUES
-        and USE_TF not in ENV_VARS_TRUE_VALUES
+        use_torch in env_vars_true_and_auto_values
+        and use_tf not in env_vars_true_values
     ):
         _torch_available = importlib.util.find_spec("torch") is not None
 
@@ -90,18 +90,26 @@ def xformers_check():
         _xformers_version = importlib_metadata.version("xformers")
         if _torch_available:
             import torch
-
             if version.Version(torch.__version__) < version.Version("1.12"):
-                raise ValueError("PyTorch should be >= 1.12")
+                raise ValueError("PyTorch version must be >= 1.12")
+            if version.Version(_xformers_version) < version.Version("0.0.17.dev"):
+                raise ValueError("Xformers version must be >= 0.0.17.dev")
         has_xformers = True
     except Exception as e:
         print(f"Exception importing xformers: {e}")
         has_xformers = False
+
     return has_xformers
 
 
 def list_optimizer():
-    optimizer_list = ["8bit AdamW"]
+    optimizer_list = ["Torch AdamW"]
+
+    try:
+        from bitsandbytes.optim import AdamW8bit
+        optimizer_list.append("8bit AdamW")
+    except:
+        pass
 
     try:
         from lion_pytorch import Lion
@@ -124,7 +132,13 @@ def list_optimizer():
     try:
         from dadaptation import DAdaptAdam
         optimizer_list.append("AdamW Dadaptation")
-    except ImportError:
+    except:
+        pass
+
+    try:
+        from dreambooth.dadapt_adan import DAdaptAdan
+        optimizer_list.append("Adan Dadaptation")
+    except:
         pass
 
     return optimizer_list
@@ -148,11 +162,11 @@ def list_precisions():
             precisions.append("bf16")
     except:
         pass
-    
+
     return precisions
 
 
-def list_og_schedulers():
+def list_schedulers():
     return [
         "linear",
         "linear_with_warmup",
@@ -166,30 +180,6 @@ def list_og_schedulers():
     ]
 
 
-def list_adapt_schedulers():
-    schedulers = list_og_schedulers()
-
-    try:
-        from dadaptation import DAdaptSGD
-        schedulers.append("sgd_with_dadaptation")
-    except ImportError:
-        pass
-
-    try:
-        from dadaptation import DAdaptAdaGrad
-        schedulers.append("adam_with_dadaptation")
-    except ImportError:
-        pass
-
-    try:
-        from dadaptation import DAdaptAdam
-        schedulers.append("adagrad_with_dadaptation")
-    except ImportError:
-        pass
-    
-    return schedulers
-
-
 def wrap_gpu_call(func, extra_outputs=None):
     def f(*args, extra_outputs_array=extra_outputs, **kwargs):
         try:
@@ -198,6 +188,7 @@ def wrap_gpu_call(func, extra_outputs=None):
             status.end()
 
         except Exception as e:
+            status.end()
             # When printing out our debug argument list, do not print out more than a MB of text
             max_debug_str_len = 131072  # (1024*1024)/8
 

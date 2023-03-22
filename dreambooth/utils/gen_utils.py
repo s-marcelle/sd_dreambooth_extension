@@ -73,7 +73,11 @@ def generate_dataset(model_name: str, instance_prompts: List[PromptData] = None,
     return train_dataset
 
 
-def generate_classifiers(args: DreamboothConfig, class_gen_method: bool = True, accelerator: Accelerator = None, ui=True):
+def generate_classifiers(
+        args: DreamboothConfig,
+        class_gen_method: str = "Native Diffusers",
+        accelerator: Accelerator = None,
+        ui=True):
     """
 
     @param args: A DreamboothConfig
@@ -97,7 +101,6 @@ def generate_classifiers(args: DreamboothConfig, class_gen_method: bool = True, 
         print(f"Exception generating dataset: {str(p)}")
         traceback.print_exc()
         if ui:
-            shared.status.end()
             return 0, []
         else:
             return 0, instance_prompts, class_prompts
@@ -106,7 +109,6 @@ def generate_classifiers(args: DreamboothConfig, class_gen_method: bool = True, 
     if set_len == 0:
         print("Nothing to generate.")
         if ui:
-            shared.status.end()
             return 0, []
         else:
             return 0, instance_prompts, class_prompts
@@ -189,7 +191,6 @@ def generate_classifiers(args: DreamboothConfig, class_gen_method: bool = True, 
     cleanup()
     print(f"Generated {generated} new class images.")
     if ui:
-        shared.status.end()
         return generated, out_images
     else:
         return generated, instance_prompts, class_prompts

@@ -290,9 +290,12 @@ def create_ldm_bert_config(original_config):
     return config
 
 
-def convert_ldm_unet_checkpoint(checkpoint, config, path=None):
+def convert_ldm_unet_checkpoint(checkpoint, config, path=None, extract_ema=False):
     """
     Takes a state dict and a config, and returns a converted checkpoint.
+
+    If you are extracting an emaonly model, it'll doesn't really know it's an EMA unet, because they just stuck the EMA weights into the unet. BUT, if you have both the nonema and -ema files in the same directory and you select "nonema", or if you have the 1.5 model with both weights, then you'll get both unets.
+    So the regular 1-5-pruned model should get you both.
     """
 
     # extract state_dict for UNet
@@ -302,12 +305,14 @@ def convert_ldm_unet_checkpoint(checkpoint, config, path=None):
     has_ema = False
     unet_key = "model.diffusion_model."
     # at least a 100 parameters have to start with `model_ema` in order for the checkpoint to be EMA
-    if sum(k.startswith("model_ema") for k in keys) > 100:
+    if extract_ema and sum(k.startswith("model_ema") for k in keys) > 100:
         print(f"Checkpoint {path} has both EMA and non-EMA weights.")
         has_ema = True
         for key in keys:
             if key.startswith("model.diffusion_model"):
                 flat_ema_key = "model_ema." + "".join(key.split(".")[1:])
+                if not hasattr(checkpoint, flat_ema_key):
+                    flat_ema_key = flat_ema_key.replace("diffusion_model", "")
                 ema_state_dict[key.replace(unet_key, "")] = checkpoint.pop(flat_ema_key)
     ema_checkpoint = None
     for key in keys:
@@ -769,7 +774,7 @@ def replace_symlinks(path, base):
         # Get the target of the symlink
         src = os.readlink(path)
         blob = os.path.basename(src)
-        path_parts = path.split("/") if "/" in path else path.split("\\")
+        path_parts = path.split(os.pathsep)
         model_name = None
         dir_name = None
         save_next = False
@@ -838,7 +843,7 @@ def download_model(db_config: DreamboothConfig, token, extract_ema: bool = False
             print(f'Found model index: {name}')
             model_index = local_name
             continue
-        if (".ckpt" in name or ".safetensors" in name) and not "/" in name:
+        if (".ckpt" in name or ".safetensors" in name) and os.pathsep not in name:
             print(f'Found model: {name}')
             model_files.append(local_name)
             continue
@@ -1193,7 +1198,7 @@ def extract_checkpoint(new_model_name: str, checkpoint_file: str, from_hub=False
         unet = UNet2DConditionModel(**unet_config)
 
         converted_unet_checkpoint, converted_ema_checkpoint = convert_ldm_unet_checkpoint(
-            checkpoint, unet_config, path=checkpoint_file
+            checkpoint, unet_config, path=checkpoint_file, extract_ema=extract_ema
         )
         unet.load_state_dict(converted_unet_checkpoint)
         unet.save_pretrained(os.path.join(db_config.pretrained_model_name_or_path, "unet"), safe_serialization=True)
@@ -1201,6 +1206,7 @@ def extract_checkpoint(new_model_name: str, checkpoint_file: str, from_hub=False
 
         if converted_ema_checkpoint is not None:
             print("Saving EMA unet.")
+            has_ema = True
             ema_unet = UNet2DConditionModel(**unet_config)
             ema_unet.load_state_dict(converted_ema_checkpoint)
             ema_unet.save_pretrained(os.path.join(db_config.pretrained_model_name_or_path, "ema_unet"),
@@ -1324,7 +1330,6 @@ def extract_checkpoint(new_model_name: str, checkpoint_file: str, from_hub=False
 
     enable_safe_unpickle()
     printi(result_status)
-
 
     return gr_update(choices=sorted(get_db_models()), value=new_model_name), \
         model_dir, \
