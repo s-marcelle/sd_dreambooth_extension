@@ -118,29 +118,24 @@ def list_optimizer():
     except ImportError:
         pass
 
-    # try:
-    #     from dadaptation import DAdaptSGD
-    #     optimizer_list.append("SGD Dadaptation")
-    # except:
-    #     pass
-    #
-    # try:
-    #     from dadaptation import DAdaptAdaGrad
-    #     optimizer_list.append("AdaGrad Dadaptation")
-    # except:
-    #     pass
-    #
-    # try:
-    #     from dadaptation import DAdaptAdam
-    #     optimizer_list.append("AdamW Dadaptation")
-    # except:
-    #     pass
-    #
-    # try:
-    #     from dreambooth.dadapt_adan import DAdaptAdan
-    #     optimizer_list.append("Adan Dadaptation")
-    # except:
-    #     pass
+     try:
+         from dadaptation import DAdaptSGD
+         optimizer_list.append("SGD Dadaptation")
+     except:
+         pass
+    
+    
+     try:
+         from dadaptation import DAdaptAdam
+         optimizer_list.append("AdamW Dadaptation")
+     except:
+         pass
+    
+     try:
+         from dreambooth.dadapt_adan import DAdaptAdan
+         optimizer_list.append("Adan Dadaptation")
+     except:
+         pass
 
     return optimizer_list
 
