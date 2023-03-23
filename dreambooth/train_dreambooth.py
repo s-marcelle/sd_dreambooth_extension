@@ -88,6 +88,7 @@ try:
             "The version of diffusers is less than or equal to 0.14.0. Performing monkey-patch..."
         )
         DEISMultistepScheduler.get_velocity = get_velocity
+        UniPCMultistepScheduler.get_velocity = get_velocity
     else:
         print(
             "The version of diffusers is greater than 0.14.0, hopefully they merged the PR by now"
@@ -463,10 +464,7 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                 optimizer = DAdaptSGD(
                 params_to_optimize,
                 lr=args.learning_rate,
-                momentum=0.9,
                 weight_decay=args.adamw_weight_decay,
-                d0=1e-6,
-                growth_rate=float('inf'),
                 )
                 optimizer_class = DAdaptSGD
 
@@ -477,23 +475,11 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                     lr=args.learning_rate,
                     weight_decay=args.adamw_weight_decay,
                     decouple=True,
-                    betas=(0.9, 0.999),
-                    eps=1e-8,
-                    d0=1e-6,
-                    growth_rate=float('inf'),
+
                     )
                 optimizer_class = DAdaptAdam
 
-            # Too temperamental to for me to find a working config
-            #elif args.optimizer == "Adagrad Dadaptation":
-            #    from dadaptation import DAdaptAdaGrad
-            #    optimizer = DAdaptAdaGrad(
-            #        params_to_optimize,
-            #        lr=args.learning_rate,
-            #        eps=1e-8,
-            #        weight_decay=args.adamw_weight_decay,
-            #        )
-            #    optimizer_class = DAdaptAdaGrad
+
 
             elif args.optimizer == "Adan Dadaptation":
                 from dreambooth.dadapt_adan import DAdaptAdan
@@ -501,11 +487,7 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                     params_to_optimize,
                     lr=args.learning_rate,
                     weight_decay=args.adamw_weight_decay,
-                    betas=(0.98, 0.92, 0.99),
-                    eps=1e-8,
-                    growth_rate=float('inf'),
-                    no_prox=False,
-                    d0=1e-6,
+
                     )
                 optimizer_class = DAdaptAdan
 
