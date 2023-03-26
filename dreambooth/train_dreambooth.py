@@ -648,7 +648,7 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
             args.in_progress_steps = 0
         else:
             max_train_steps = args.num_train_epochs * len(train_dataset)
-            sched_train_steps = args.num_train_epochs * train_dataset.num_train_imagesdir
+            sched_train_steps = args.num_train_epochs * train_dataset.num_train_images
 
         lr_scale_pos = args.lr_scale_pos
         if class_prompts:
@@ -937,10 +937,7 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                 with accelerator.autocast(), torch.inference_mode():
                     if save_model:
                         # we are saving so should update in_progress_steps to the current step in this session
-                        # calcuate approx in_progress_step using global step and session_epoch to save
-                        args.in_progress_steps = (global_step + (session_epoch * args.steps_per_epoch)
-                                                  )
-                        # We are saving weights, we need to ensure revision is saved
+                        args.in_progress_steps = session_epoch * len(train_dataset)Phts, we need to ensure revision is saved
                         args.save()
                         try:
                             out_file = None
