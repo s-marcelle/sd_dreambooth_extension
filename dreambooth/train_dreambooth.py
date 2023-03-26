@@ -130,8 +130,8 @@ def current_prior_loss(args, current_epoch):
         return args.prior_loss_weight_min
     percentage_completed = current_epoch / args.prior_loss_target
     prior = (
-            args.prior_loss_weight * (1 - percentage_completed)
-            + args.prior_loss_weight_min * percentage_completed
+        args.prior_loss_weight * (1 - percentage_completed)
+        + args.prior_loss_weight_min * percentage_completed
     )
     printm(f"Prior: {prior}")
     return prior
@@ -348,6 +348,10 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
         ema_model = None
         if args.use_ema:
+            if args.use_lora:
+                raise ValueError(
+                    "EMA is not compatible with LORA. Please disable EMA or LORA."
+                )
             if os.path.exists(
                     os.path.join(
                         args.pretrained_model_name_or_path,
@@ -381,14 +385,16 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
         if args.use_lora:
             unet.requires_grad_(False)
             if args.lora_model_name:
-                lora_path = os.path.join(args.model_dir, "loras", args.lora_model_name)
+                lora_path = os.path.join(
+                    args.model_dir, "loras", args.lora_model_name)
                 lora_txt = lora_path.replace(".pt", "_txt.pt")
 
                 if not os.path.exists(lora_path) or not os.path.isfile(lora_path):
                     lora_path = None
                     lora_txt = None
 
-            injectable_lora = get_target_module("injection", args.use_lora_extended)
+            injectable_lora = get_target_module(
+                "injection", args.use_lora_extended)
             target_module = get_target_module("module", args.use_lora_extended)
 
             unet_lora_params, _ = injectable_lora(
@@ -400,7 +406,8 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
             if stop_text_percentage != 0:
                 text_encoder.requires_grad_(False)
-                inject_trainable_txt_lora = get_target_module("injection", False)
+                inject_trainable_txt_lora = get_target_module(
+                    "injection", False)
                 text_encoder_lora_params, _ = inject_trainable_txt_lora(
                     text_encoder,
                     target_replace_module=TEXT_ENCODER_DEFAULT_TARGET_REPLACE,
@@ -446,7 +453,7 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                     params_to_optimize,
                     lr=args.learning_rate,
                     weight_decay=args.adamw_weight_decay,
-                    #decouple=True,
+                    # decouple=True,
                 )
                 optimizer_class = AdamW8bit
 
@@ -462,9 +469,9 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
             elif args.optimizer == "SGD Dadaptation":
                 from dadaptation import DAdaptSGD
                 optimizer = DAdaptSGD(
-                params_to_optimize,
-                lr=args.learning_rate,
-                weight_decay=args.adamw_weight_decay,
+                    params_to_optimize,
+                    lr=args.learning_rate,
+                    weight_decay=args.adamw_weight_decay,
                 )
                 optimizer_class = DAdaptSGD
 
@@ -476,10 +483,8 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                     weight_decay=args.adamw_weight_decay,
                     decouple=True,
 
-                    )
+                )
                 optimizer_class = DAdaptAdam
-
-
 
             elif args.optimizer == "Adan Dadaptation":
                 from dreambooth.dadapt_adan import DAdaptAdan
@@ -488,7 +493,7 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                     lr=args.learning_rate,
                     weight_decay=args.adamw_weight_decay,
 
-                    )
+                )
                 optimizer_class = DAdaptAdan
 
             else:
@@ -499,7 +504,6 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                     weight_decay=args.adamw_weight_decay,
                 )
                 optimizer_class = AdamW
-
 
         except Exception as e:
             logger.warning(f"Exception importing {args.optimizer}: {e}")
@@ -633,12 +637,18 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
             collate_fn=collate_fn,
             num_workers=n_workers,
         )
-
-        max_train_steps = args.num_train_epochs * len(train_dataset)
-
-        # This is separate, because optimizer.step is only called once per "step" in training, so it's not
-        # affected by batch size
-        sched_train_steps = args.num_train_epochs * train_dataset.num_train_images
+        if args.in_progress:
+            in_progress_epochs = round(
+                args.in_progress_steps / len(train_dataset))
+            max_train_steps = (args.num_train_epochs -
+                               in_progress_epochs) * len(train_dataset)
+            sched_train_steps = (
+                args.num_train_epochs - in_progress_epochs) * train_dataset.num_train_images
+            args.in_progress = False
+            args.in_progress_steps = 0
+        else:
+            max_train_steps = args.num_train_epochs * len(train_dataset)
+            sched_train_steps = args.num_train_epochs * train_dataset.num_train_imagesdir
 
         lr_scale_pos = args.lr_scale_pos
         if class_prompts:
@@ -659,6 +669,11 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
         # create ema, fix OOM
         if args.use_ema:
+            # in case of config corruption, check if lora is enabled and throw exception
+            if args.use_lora:
+                raise ValueError(
+                    "LORA and EMA cannot be used together. Please disable one of them."
+                )
             if stop_text_percentage != 0:
                 (
                     ema_model.model,
@@ -714,7 +729,7 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
         # Train!
         total_batch_size = (
-                train_batch_size * accelerator.num_processes * gradient_accumulation_steps
+            train_batch_size * accelerator.num_processes * gradient_accumulation_steps
         )
         max_train_epochs = args.num_train_epochs
         # we calculate our number of tenc training epochs
@@ -750,26 +765,31 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                 global_epoch = first_epoch
             except Exception as lex:
                 print(f"Exception loading checkpoint: {lex}")
-
+        # set the in_progress flag to allow resume if oom
+        args.in_progress = True
         print("  ***** Running training *****")
         if shared.force_cpu:
             print(f"  TRAINING WITH CPU ONLY")
-        print(f"  Num batches each epoch = {len(train_dataset) // train_batch_size}")
+        print(
+            f"  Num batches each epoch = {len(train_dataset) // train_batch_size}")
         print(f"  Num Epochs = {max_train_epochs}")
         print(f"  Batch Size Per Device = {train_batch_size}")
         print(f"  Gradient Accumulation steps = {gradient_accumulation_steps}")
-        print(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
+        print(
+            f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
         print(f"  Text Encoder Epochs: {text_encoder_epochs}")
         print(f"  Total optimization steps = {sched_train_steps}")
         print(f"  Total training steps = {max_train_steps}")
         print(f"  Resuming from checkpoint: {resume_from_checkpoint}")
         print(f"  First resume epoch: {first_epoch}")
         print(f"  First resume step: {resume_step}")
-        print(f"  Lora: {args.use_lora}, Optimizer: {args.optimizer}, Prec: {precision}")
+        print(
+            f"  Lora: {args.use_lora}, Optimizer: {args.optimizer}, Prec: {precision}")
         print(f"  Gradient Checkpointing: {args.gradient_checkpointing}")
         print(f"  EMA: {args.use_ema}")
         print(f"  UNET: {args.train_unet}")
-        print(f"  Freeze CLIP Normalization Layers: {args.freeze_clip_normalization}")
+        print(
+            f"  Freeze CLIP Normalization Layers: {args.freeze_clip_normalization}")
         print(f"  LR: {args.learning_rate}")
         if args.use_lora_extended:
             print(f"  LoRA Extended: {args.use_lora_extended}")
@@ -890,7 +910,8 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
                 s_pipeline = DiffusionPipeline.from_pretrained(
                     args.pretrained_model_name_or_path,
-                    unet=accelerator.unwrap_model(unet, keep_fp32_wrapper=True),
+                    unet=accelerator.unwrap_model(
+                        unet, keep_fp32_wrapper=True),
                     text_encoder=accelerator.unwrap_model(
                         text_encoder, keep_fp32_wrapper=True
                     ),
@@ -915,6 +936,10 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
                 with accelerator.autocast(), torch.inference_mode():
                     if save_model:
+                        # we are saving so should update in_progress_steps to the current step in this session
+                        # calcuate approx in_progress_step using global step and session_epoch to save
+                        args.in_progress_steps = (global_step + (session_epoch * args.steps_per_epoch)
+                                                  )
                         # We are saving weights, we need to ensure revision is saved
                         args.save()
                         try:
@@ -957,7 +982,8 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                             elif save_lora:
                                 pbar.set_description("Saving Lora Weights...")
                                 # setup directory
-                                loras_dir = os.path.join(args.model_dir, "loras")
+                                loras_dir = os.path.join(
+                                    args.model_dir, "loras")
                                 os.makedirs(loras_dir, exist_ok=True)
                                 # setup pt path
                                 lora_model_name = (
@@ -973,12 +999,15 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                                 tgt_module = get_target_module(
                                     "module", args.use_lora_extended
                                 )
-                                save_lora_weight(s_pipeline.unet, out_file, tgt_module)
+                                save_lora_weight(
+                                    s_pipeline.unet, out_file, tgt_module)
 
-                                modelmap = {"unet": (s_pipeline.unet, tgt_module)}
+                                modelmap = {
+                                    "unet": (s_pipeline.unet, tgt_module)}
                                 # save text_encoder
                                 if stop_text_percentage != 0:
-                                    out_txt = out_file.replace(".pt", "_txt.pt")
+                                    out_txt = out_file.replace(
+                                        ".pt", "_txt.pt")
                                     modelmap["text_encoder"] = (
                                         s_pipeline.text_encoder,
                                         TEXT_ENCODER_DEFAULT_TARGET_REPLACE,
@@ -1015,9 +1044,11 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                             # package pt into checkpoint
                             if save_checkpoint:
                                 pbar.set_description("Compiling Checkpoint")
-                                snap_rev = str(args.revision) if save_snapshot else ""
+                                snap_rev = str(
+                                    args.revision) if save_snapshot else ""
                                 if export_diffusers:
-                                    copy_diffusion_model(args.model_name, diffusers_dir)
+                                    copy_diffusion_model(
+                                        args.model_name, diffusers_dir)
                                 else:
                                     compile_checkpoint(args.model_name, reload_models=False, lora_file_name=out_file,
                                                        log=False, snap_rev=snap_rev, pbar=pbar)
@@ -1051,14 +1082,16 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                                         negative_prompt=concepts[
                                             0
                                         ].save_sample_negative_prompt,
-                                        resolution=(args.resolution, args.resolution),
+                                        resolution=(args.resolution,
+                                                    args.resolution),
                                     )
                                     prompts.append(epd)
                                 pbar.set_description("Generating Samples")
                                 pbar.reset(len(prompts) + 2)
                                 ci = 0
                                 for c in prompts:
-                                    c.out_dir = os.path.join(args.model_dir, "samples")
+                                    c.out_dir = os.path.join(
+                                        args.model_dir, "samples")
                                     generator = torch.manual_seed(int(c.seed))
                                     s_image = s_pipeline(
                                         c.prompt,
@@ -1170,6 +1203,10 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
         for epoch in range(first_epoch, max_train_epochs):
             if training_complete:
                 print("Training complete, breaking epoch.")
+
+                # reset in_progress and in_progress_steps
+                args.in_progress = False
+                args.in_progress_steps = 0
                 break
 
             if args.train_unet:
@@ -1223,7 +1260,8 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
                     # Sample noise that we'll add to the latents
                     if args.offset_noise < 0:
-                        noise = torch.randn_like(latents, device=latents.device)
+                        noise = torch.randn_like(
+                            latents, device=latents.device)
                     else:
                         noise = torch.randn_like(
                             latents, device=latents.device
@@ -1247,7 +1285,8 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
                     # Add noise to the latents according to the noise magnitude at each timestep
                     # (this is the forward diffusion process)
-                    noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
+                    noisy_latents = noise_scheduler.add_noise(
+                        latents, noise, timesteps)
                     pad_tokens = args.pad_tokens if train_tenc else False
                     encoder_hidden_states = encode_hidden_state(
                         text_encoder,
@@ -1271,7 +1310,8 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
                     # Get the target for loss depending on the prediction type
                     if noise_scheduler.config.prediction_type == "v_prediction":
-                        target = noise_scheduler.get_velocity(latents, noise, timesteps)
+                        target = noise_scheduler.get_velocity(
+                            latents, noise, timesteps)
                     else:
                         target = noise
 
@@ -1294,7 +1334,8 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                             # If is_prior is False, append the corresponding chunk to instance_chunks
                             if not is_prior:
                                 instance_chunks.append(model_pred_chunks[i])
-                                instance_pred_chunks.append(target_pred_chunks[i])
+                                instance_pred_chunks.append(
+                                    target_pred_chunks[i])
                             # If is_prior is True, append the corresponding chunk to prior_chunks
                             else:
                                 prior_chunks.append(model_pred_chunks[i])
@@ -1314,7 +1355,8 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
                         if len(prior_pred_chunks):
                             model_pred_prior = torch.stack(prior_chunks, dim=0)
-                            target_prior = torch.stack(prior_pred_chunks, dim=0)
+                            target_prior = torch.stack(
+                                prior_pred_chunks, dim=0)
                             prior_loss = torch.nn.functional.mse_loss(
                                 model_pred_prior.float(),
                                 target_prior.float(),
@@ -1348,7 +1390,8 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
                     optimizer.zero_grad(set_to_none=args.gradient_set_to_none)
 
-                allocated = round(torch.cuda.memory_allocated(0) / 1024 ** 3, 1)
+                allocated = round(
+                    torch.cuda.memory_allocated(0) / 1024 ** 3, 1)
                 cached = round(torch.cuda.memory_reserved(0) / 1024 ** 3, 1)
                 last_lr = lr_scheduler.get_last_lr()[0]
                 global_step += train_batch_size
@@ -1399,6 +1442,8 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
 
                 # Log completion message
                 if training_complete or status.interrupted:
+                    args.in_progress = False
+                    args.in_progress_steps = 0
                     print("  Training complete (step check).")
                     if status.interrupted:
                         state = "cancelled"
@@ -1428,6 +1473,9 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                 training_complete = session_epoch >= max_train_epochs
 
             if training_complete or status.interrupted:
+                # reset in_progress and in_progress_steps
+                args.in_progress = False
+                args.in_progress_steps = 0
                 print("  Training complete (step check).")
                 if status.interrupted:
                     state = "cancelled"
@@ -1449,7 +1497,11 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
                     )
                     for i in range(args.epoch_pause_time):
                         if status.interrupted:
+                            # reset in_progress flag and in_progress_steps
                             training_complete = True
+                            # reset in_progress and in_progress_steps
+                            args.in_progress = False
+                            args.in_progress_steps = 0
                             print("Training complete, interrupted.")
                             break
                         time.sleep(1)

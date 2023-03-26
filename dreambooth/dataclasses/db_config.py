@@ -49,6 +49,8 @@ class DreamboothConfig(BaseModel):
     train_unfrozen: bool = True
     has_ema: bool = False
     hflip: bool = False
+    in_progress: bool = False
+    in_progress_steps: int = 0
     infer_ema: bool = False
     initial_revision: int = 0
     learning_rate: float = 5e-6
@@ -167,7 +169,8 @@ class DreamboothConfig(BaseModel):
             backup_dir = os.path.join(models_path, "backups")
             if not os.path.exists(backup_dir):
                 os.makedirs(backup_dir)
-            config_file = os.path.join(models_path, "backups", f"db_config_{self.revision}.json")
+            config_file = os.path.join(
+                models_path, "backups", f"db_config_{self.revision}.json")
         with open(config_file, "w") as outfile:
             json.dump(self.__dict__, outfile, indent=4)
 
@@ -255,7 +258,8 @@ class DreamboothConfig(BaseModel):
             concept = Concept(input_dict=concept_dict)
             if concept.is_valid:
                 if concept.class_data_dir == "" or concept.class_data_dir is None:
-                    concept.class_data_dir = os.path.join(self.model_dir, f"classifiers_{c_idx}")
+                    concept.class_data_dir = os.path.join(
+                        self.model_dir, f"classifiers_{c_idx}")
                 concepts.append(concept)
                 c_idx += 1
 
@@ -271,7 +275,8 @@ class DreamboothConfig(BaseModel):
                 self.revision = 0
             if self.epoch == "" or self.epoch is None:
                 self.epoch = 0
-            self.model_name = "".join(x for x in self.model_name if (x.isalnum() or x in "._- "))
+            self.model_name = "".join(
+                x for x in self.model_name if (x.isalnum() or x in "._- "))
             models_path = shared.dreambooth_models_path
             try:
                 from core.handlers.models import ModelHandler
@@ -296,7 +301,8 @@ class DreamboothConfig(BaseModel):
         models_path = shared.dreambooth_models_path
         if models_path == "" or models_path is None:
             models_path = os.path.join(shared.models_path, "dreambooth")
-        config_file = os.path.join(models_path, self.model_name, "db_config.json")
+        config_file = os.path.join(
+            models_path, self.model_name, "db_config.json")
         try:
             with open(config_file, 'r') as openfile:
                 config_dict = json.load(openfile)
@@ -353,7 +359,8 @@ def save_config(*args):
             concept_test = Concept(concept_dict)
             if concept_test.is_valid:
                 concepts_list.append(concept_test.__dict__)
-        existing_concepts = params_dict["concepts_list"] if "concepts_list" in params_dict else []
+        existing_concepts = params_dict["concepts_list"] if "concepts_list" in params_dict else [
+        ]
         if len(concepts_list) and not len(existing_concepts):
             params_dict["concepts_list"] = concepts_list
 

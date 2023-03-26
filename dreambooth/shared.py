@@ -101,7 +101,8 @@ def run(command, desc=None, errdesc=None, custom_env=None, live=False):
         logger.debug(desc)
 
     if live:
-        result = subprocess.run(command, shell=True, env=os.environ if custom_env is None else custom_env)
+        result = subprocess.run(
+            command, shell=True, env=os.environ if custom_env is None else custom_env)
         if result.returncode != 0:
             raise RuntimeError(f"""{errdesc or 'Error running command'}.
 Command: {command}
@@ -292,14 +293,15 @@ def cumsum_fix(input, cumsum_func, *args, **kwargs):
     return cumsum_func(input, *args, **kwargs)
 
 
-def load_vars(root_path = None):
+def load_vars(root_path=None):
     global script_path, models_path, embeddings_dir, dreambooth_models_path, ckpt_dir, ui_lora_models_path, db_model_config, \
-    data_path, show_progress_every_n_steps, parallel_processing_allowed, dataset_filename_word_regex, dataset_filename_join_string, \
-    device_id, state, disable_safe_unpickle, ckptfix, medvram, lowvram, debug, profile_db, sub_quad_q_chunk_size, sub_quad_kv_chunk_size, \
-    sub_quad_chunk_threshold, CLIP_stop_at_last_layers, sd_model, config, force_cpu, paths, is_auto, device, orig_tensor_to, orig_layer_norm, \
-    orig_tensor_numpy, extension_path, orig_cumsum, orig_Tensor_cumsum, status, state
+        data_path, show_progress_every_n_steps, parallel_processing_allowed, dataset_filename_word_regex, dataset_filename_join_string, \
+        device_id, state, disable_safe_unpickle, ckptfix, medvram, lowvram, debug, profile_db, sub_quad_q_chunk_size, sub_quad_kv_chunk_size, \
+        sub_quad_chunk_threshold, CLIP_stop_at_last_layers, sd_model, config, force_cpu, paths, is_auto, device, orig_tensor_to, orig_layer_norm, \
+        orig_tensor_numpy, extension_path, orig_cumsum, orig_Tensor_cumsum, status, state
 
-    script_path = os.pathsep.join(__file__.split(os.pathsep)[0:-4]) if root_path is None else root_path
+    script_path = os.pathsep.join(__file__.split(
+        os.pathsep)[0:-4]) if root_path is None else root_path
     logger.debug(f"Script path is {script_path}")
     models_path = os.path.join(script_path, "models")
     embeddings_dir = os.path.join(script_path, "embeddings")
@@ -345,7 +347,8 @@ def load_vars(root_path = None):
     orig_layer_norm = torch.nn.functional.layer_norm
     # MPS workaround for https://github.com/pytorch/pytorch/issues/90532
     orig_tensor_numpy = torch.Tensor.numpy
-    extension_path = os.path.join(script_path, "extensions", "sd_dreambooth_extension")
+    extension_path = os.path.join(
+        script_path, "extensions", "sd_dreambooth_extension")
 
     orig_cumsum = torch.cumsum
     orig_Tensor_cumsum = torch.Tensor.cumsum
@@ -359,11 +362,13 @@ def load_vars(root_path = None):
         elif version.parse(torch.__version__) > version.parse("1.13.1"):
             if not torch.Tensor([1, 2]).to(torch.device("mps")).equal(
                     torch.Tensor([1, 1]).to(torch.device("mps")).cumsum(0, dtype=torch.int16)):
-                torch.cumsum = lambda input, *args, **kwargs: (cumsum_fix(input, orig_cumsum, *args, **kwargs))
+                torch.cumsum = lambda input, * \
+                    args, **kwargs: (cumsum_fix(input, orig_cumsum, *args, **kwargs))
                 torch.Tensor.cumsum = lambda self, *args, **kwargs: (
                     cumsum_fix(self, orig_Tensor_cumsum, *args, **kwargs))
             orig_narrow = torch.narrow
-            torch.narrow = lambda *args, **kwargs: (orig_narrow(*args, **kwargs).clone())
+            torch.narrow = lambda *args, **kwargs: (
+                orig_narrow(*args, **kwargs).clone())
 
     status = DreamState()
 
