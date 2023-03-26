@@ -1,7 +1,7 @@
 # Borrowed heavily from https://github.com/bmaltais/kohya_ss/blob/master/train_db.py and
 # https://github.com/ShivamShrirao/diffusers/tree/main/examples/dreambooth
 # With some custom bits sprinkled in and some stuff from OG diffusers as well.
-import copy
+
 import itertools
 import logging
 import os
@@ -640,6 +640,10 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
         # affected by batch size
         sched_train_steps = args.num_train_epochs * train_dataset.num_train_images
 
+        lr_scale_pos = args.lr_scale_pos
+        if class_prompts:
+            lr_scale_pos *= 2
+
         lr_scheduler = UniversalScheduler(
             name=args.lr_scheduler,
             optimizer=optimizer,
@@ -650,7 +654,7 @@ def main(class_gen_method: str = "Native Diffusers") -> TrainResult:
             num_cycles=args.lr_cycles,
             power=args.lr_power,
             factor=args.lr_factor,
-            scale_pos=args.lr_scale_pos,
+            scale_pos=lr_scale_pos,
         )
 
         # create ema, fix OOM
