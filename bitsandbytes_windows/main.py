@@ -16,18 +16,22 @@ evaluation:
         - based on that set the default path
 """
 
-import ctypes
 import os
-
+import ctypes as ct
 from .paths import determine_cuda_runtime_lib_path
+
+CUDA_RUNTIME_LIB: str = "libcudart.so"
 
 
 def check_cuda_result(cuda, result_val):
     # 3. Check for CUDA errors
     if result_val != 0:
-        error_str = ctypes.c_char_p()
-        cuda.cuGetErrorString(result_val, ctypes.byref(error_str))
-        print(f"CUDA exception! Error code: {error_str.value.decode()}")
+        error_str = ct.c_char_p()
+        cuda.cuGetErrorString(result_val, ct.byref(error_str))
+        if error_str.value is not None:
+            CUDASetup.get_instance().add_log_entry(f"CUDA exception! Error code: {error_str.value.decode()}")
+        else:
+            CUDASetup.get_instance().add_log_entry(f"Unknown CUDA exception! Please check your CUDA install. It might also be that your GPU is too old.")
 
 
 def get_cuda_version(cuda, cudart_path):
@@ -55,11 +59,9 @@ def get_cuda_version(cuda, cudart_path):
 def get_cuda_lib_handle():
     # 1. find libcuda.so library (GPU driver) (/usr/lib)
     try:
-        cuda = ctypes.CDLL("libcuda.so")
+        cuda = ct.CDLL("libcuda.so")
     except OSError:
-        # TODO: shouldn't we error or at least warn here?
-        print(
-            'CUDA SETUP: WARNING! libcuda.so not found! Do you have a CUDA driver installed? If you are on a cluster, make sure you are on a CUDA machine!')
+        CUDASetup.get_instance().add_log_entry('CUDA SETUP: WARNING! libcuda.so not found! Do you have a CUDA driver installed? If you are on a cluster, make sure you are on a CUDA machine!')
         return None
     check_cuda_result(cuda, cuda.cuInit(0))
 
@@ -77,22 +79,20 @@ def get_compute_capabilities(cuda):
     # bits taken from https://gist.github.com/f0k/63a664160d016a491b2cbea15913d549
     """
 
-    nGpus = ctypes.c_int()
-    cc_major = ctypes.c_int()
-    cc_minor = ctypes.c_int()
+    nGpus = ct.c_int()
+    cc_major = ct.c_int()
+    cc_minor = ct.c_int()
 
-    device = ctypes.c_int()
+    device = ct.c_int()
 
-    check_cuda_result(cuda, cuda.cuDeviceGetCount(ctypes.byref(nGpus)))
+    check_cuda_result(cuda, cuda.cuDeviceGetCount(ct.byref(nGpus)))
     ccs = []
     for i in range(nGpus.value):
-        check_cuda_result(cuda, cuda.cuDeviceGet(ctypes.byref(device), i))
-        ref_major = ctypes.byref(cc_major)
-        ref_minor = ctypes.byref(cc_minor)
+        check_cuda_result(cuda, cuda.cuDeviceGet(ct.byref(device), i))
+        ref_major = ct.byref(cc_major)
+        ref_minor = ct.byref(cc_minor)
         # 2. call extern C function to determine CC
-        check_cuda_result(
-            cuda, cuda.cuDeviceComputeCapability(ref_major, ref_minor, device)
-        )
+        check_cuda_result(cuda, cuda.cuDeviceComputeCapability(ref_major, ref_minor, device))
         ccs.append(f"{cc_major.value}.{cc_minor.value}")
 
     return ccs
@@ -105,21 +105,23 @@ def get_compute_capability(cuda):
     capabilities are downwards compatible. If no GPUs are detected, it returns
     None.
     """
+    if cuda is None: return None
+
+    # TODO: handle different compute capabilities; for now, take the max
     ccs = get_compute_capabilities(cuda)
-    if ccs is not None:
-        # TODO: handle different compute capabilities; for now, take the max
-        return ccs[-1]
-    return None
+    if ccs: return ccs[-1]
 
 
 def evaluate_cuda_setup():
     if os.name == "nt":
         return "libbitsandbytes_cudaall.dll"  # $$$
 
-    binary_name = "libbitsandbytes_cpu.so"
-    # if not torch.cuda.is_available():
-    # print('No GPU detected. Loading CPU library...')
-    # return binary_name
+    # if 'BITSANDBYTES_NOWELCOME' not in os.environ or str(os.environ['BITSANDBYTES_NOWELCOME']) == '0':
+    #     print('')
+    #     print('='*35 + 'BUG REPORT' + '='*35)
+    #     print('Welcome to bitsandbytes. For bug reports, please submit your error trace to: https://github.com/TimDettmers/bitsandbytes/issues')
+    #     print('For effortless bug reporting copy-paste your error into this form: https://docs.google.com/forms/d/e/1FAIpQLScPB8emS3Thkp66nvqwmjTEgxp8Y9ufuWTzFyr9kJ5AoI47dQ/viewform?usp=sf_link')
+    #     print('='*80)
 
     cudart_path = determine_cuda_runtime_lib_path()
     if cudart_path is None:
