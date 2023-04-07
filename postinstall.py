@@ -149,7 +149,7 @@ def check_versions():
         Dependency(module="accelerate", version="0.17.1"),
         Dependency(module="diffusers", version="0.14.0"),
         Dependency(module="transformers", version="4.25.1"),
-        Dependency(module="bitsandbytes",  version="0.35.4", version_comparison="exact"),
+        Dependency(module="bitsandbytes",  version="0.37.2"),
     ]
 
     launch_errors = []
