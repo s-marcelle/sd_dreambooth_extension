@@ -140,7 +140,7 @@ def format_time(seconds: float):
 
 
 class DreamState:
-    global status_handler
+    status_handler = False
     interrupted = False
     interrupted_after_save = False
     interrupted_after_epoch = False
@@ -170,7 +170,7 @@ class DreamState:
             self.status_handler.end(desc="Interrupted")
         self.interrupted = True
         self.in_progress = False
-        
+
     def interrupt_after_save(self):
         self.interrupted_after_save = True
         self.in_progress = False
