@@ -12,10 +12,10 @@ class mytqdm(tqdm):
             from core.handlers.status import StatusHandler
             self.status_handler = StatusHandler(user_name=kwargs["user"] if "user" in kwargs else None)
             shared.status_handler = self.status_handler
-            if "user" in kwargs:
-                del kwargs["user"]
         except:
             pass
+        if "user" in kwargs:
+            del kwargs["user"]
         self.update_ui = True
         if "total" in kwargs:
             total = kwargs["total"]
